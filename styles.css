@@ -1,0 +1,914 @@
+/*
+styles.css - VPL Monitoring Dashboard Web App Stylesheet
+
+This file contains all the CSS styles for the VPL web dashboard, including:
+- Layout and responsive design
+- Theming (default, dark, USF)
+- Styling for login, navigation, terminals, tabs, modals, alerts, and customization
+- Utility classes for hiding/showing elements
+- Custom styles for email/SMS alert management
+*/
+
+/*
+  Reset and Base Styles: These rules remove default browser spacing and set up a consistent box model for all elements.
+*/
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/*
+  Body Styles: Sets the default font, line height, background color, and layout for the whole page.
+*/
+body {
+  font-family: Arial, sans-serif;
+  line-height: 1.6;
+  background-color: #f4f4f4;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+  Login Screen Styles: Center the login box on the page and style its appearance.
+*/
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #f4f4f4;
+}
+
+.login-box {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+}
+
+.login-box h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.login-box input {
+  width: 100%;
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/*
+  Navigation Bar Styles: Styles for the top navigation bar, including background and layout.
+*/
+.navbar {
+  background-color: #1a1a1a;
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.tab-selector {
+  padding: 0.5rem;
+  border-radius: 4px;
+  background-color: #333;
+  color: white;
+  border: 1px solid #444;
+}
+
+/*
+  Main Container: Sets the main content area size and centering.
+*/
+.container {
+  flex: 1;
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/*
+  Terminal Container: Uses CSS grid to arrange terminal sections side by side.
+*/
+.terminal-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  height: calc(100vh - 120px);
+}
+
+.terminal-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-section h2 {
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+/*
+  Terminal Styles: Styles for the terminal display areas, including background, font, and scrolling.
+*/
+.terminal {
+  flex: 1;
+  background: #1e1e1e;
+  color: #ffffff;
+  font-family: 'Courier New', monospace;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  height: 300px;
+}
+
+.terminal-input {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  background: #333;
+  color: #fff;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.terminal-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/*
+  Status Indicators: Styles for connection status indicators (connected/disconnected).
+*/
+.status-indicator {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: bold;
+  margin-left: auto;
+}
+
+.status-disconnected {
+  background-color: #ff4444;
+  color: white;
+}
+
+.status-connected {
+  background-color: #4CAF50;
+  color: white;
+}
+
+/*
+  Button Styles: General button appearance and hover effects.
+*/
+button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background-color: #4CAF50;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #45a049;
+}
+
+button[data-action="clearTerminal"] {
+  background-color: #ff4444;
+  color: white;
+}
+
+button[data-action="clearTerminal"]:hover {
+  background-color: #cc0000;
+}
+
+/*
+  Status and Telemetry Grids: Layout for status and telemetry cards.
+*/
+.status-grid,
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.status-card,
+.telemetry-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/*
+  Customization Tab: Grid layout for customization options.
+*/
+.customization-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.customization-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.customization-card select {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/*
+  Utility Classes: Helper classes for hiding elements.
+*/
+.hidden {
+  display: none !important;
+}
+
+/*
+  Tab Content: Controls visibility of tab content sections.
+*/
+.tab-content {
+  display: block;
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/*
+  Modal Styles: Styles for modal dialogs (pop-up overlays).
+*/
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 300px;
+  max-width: 500px;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.modal-buttons button[data-action="send-email"] {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.modal-buttons button[data-action="close-modal"] {
+  background-color: #f44336;
+  color: white;
+}
+
+/*
+  Terminal Controls: Layout for terminal control buttons.
+*/
+.terminal-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.terminal-controls button {
+  flex: 1;
+  white-space: nowrap;
+}
+
+/*
+  Language Selector: Styles for the language dropdown.
+*/
+#languageSelector {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  margin-top: 0.5rem;
+}
+
+/*
+  Success and Error Messages: Styles for pop-up notifications.
+*/
+.success-message {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  border-radius: 4px;
+  color: white;
+  z-index: 1001;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.error-message {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  border-radius: 4px;
+  color: white;
+  z-index: 1001;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/*
+  Terminal Log Entry Styles: Color coding for different log types.
+*/
+.log-entry {
+  margin: 4px 0;
+  padding: 4px;
+  border-radius: 2px;
+}
+
+.log-entry.info {
+  color: #4CAF50;
+}
+
+.log-entry.error {
+  color: #ff4444;
+}
+
+.log-entry.warning {
+  color: #ff9800;
+}
+
+.log-entry.success {
+  color: #4CAF50;
+}
+
+/*
+  Alert Styles: Visual styles for alarm entries by severity (red, amber, green).
+*/
+.alarm-entry {
+  padding: 8px;
+  margin: 4px 0;
+  border-radius: 4px;
+}
+
+.alarm-entry.red {
+  background-color: rgba(255, 0, 0, 0.1);
+  border-left: 4px solid red;
+}
+
+.alarm-entry.amber {
+  background-color: rgba(255, 165, 0, 0.1);
+  border-left: 4px solid orange;
+}
+
+.alarm-entry.green {
+  background-color: rgba(0, 255, 0, 0.1);
+  border-left: 4px solid green;
+}
+
+/*
+  Email and SMS Styles: Layout and appearance for email and phone management sections.
+*/
+.email-form,
+.phone-form {
+  margin: 20px 0;
+}
+
+.email-list,
+.phone-list {
+  margin-top: 20px;
+}
+
+.email-item,
+.phone-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  margin: 4px 0;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.email-item button,
+.phone-item button {
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.phone-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.phone-text {
+  flex: 1;
+  font-size: 14px;
+}
+
+.phone-input-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.phone-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.carrier-select {
+  min-width: 120px;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  color: #495057;
+}
+
+.carrier-select:focus {
+  outline: none;
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.add-phone-btn {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-phone-btn:hover {
+  background-color: #0056b3;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+/*
+  Theme Variables: CSS custom properties for theming (default, dark, USF).
+*/
+:root {
+    /* Default theme */
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --primary-color: #4a90e2;
+    --secondary-color: #f5f5f5;
+    --border-color: #e0e0e0;
+    --card-bg: #ffffff;
+    --terminal-bg: #1e1e1e;
+    --terminal-text: #ffffff;
+}
+
+/*
+  Dark Theme: Overrides for dark mode.
+*/
+body.theme-dark {
+    --bg-color: #1a1a1a;
+    --text-color: #ffffff;
+    --primary-color: #4a90e2;
+    --secondary-color: #2d2d2d;
+    --border-color: #404040;
+    --card-bg: #2d2d2d;
+    --terminal-bg: #000000;
+    --terminal-text: #00ff00;
+}
+
+/*
+  USF Theme: University of South Florida color scheme overrides.
+*/
+body.theme-usf {
+    --bg-color: #ffffff;  /* White background */
+    --text-color: #006747;  /* USF Green */
+    --primary-color: #006747; /* USF Green */
+    --secondary-color: #CFC493; /* USF Gold */
+    --border-color: #006747;
+    --card-bg: #ffffff;
+    --terminal-bg: #006747;
+    --terminal-text: #CFC493;
+    --nav-bg: #006747;
+    --nav-text: #ffffff;
+    --button-bg: #006747;
+    --button-text: #ffffff;
+    --button-hover: #00593d;
+}
+
+/*
+  USF Theme Specific Elements: Applies USF theme colors to specific components.
+*/
+body.theme-usf .navbar {
+    background-color: var(--nav-bg);
+    color: var(--nav-text);
+    border-bottom: 2px solid var(--secondary-color);
+}
+
+body.theme-usf .status-card,
+body.theme-usf .telemetry-card,
+body.theme-usf .customization-card {
+    background-color: var(--card-bg);
+    border: 2px solid var(--border-color);
+    color: var(--text-color);
+}
+
+body.theme-usf button {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: 1px solid var(--secondary-color);
+}
+
+body.theme-usf button:hover {
+    background-color: var(--button-hover);
+}
+
+body.theme-usf .terminal {
+    background-color: var(--terminal-bg);
+    color: var(--terminal-text);
+    border: 1px solid var(--secondary-color);
+}
+
+body.theme-usf .tab-selector {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+/*
+  Apply Theme Colors: Uses CSS variables for consistent theming.
+*/
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.navbar {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.status-card, .telemetry-card, .customization-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+}
+
+.terminal {
+    background-color: var(--terminal-bg);
+    color: var(--terminal-text);
+}
+
+/*
+  Status Indicators: Color coding for connection status.
+*/
+.status-indicator {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.status-connected {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.status-disconnected {
+    background-color: #f44336;
+    color: white;
+}
+
+.status-error {
+    background-color: #ff9800;
+    color: white;
+}
+
+/*
+  Theme-Specific Card Styles: Further color tweaks for dark and USF themes.
+*/
+.status-card.theme-dark, .telemetry-card.theme-dark {
+    background-color: #2d2d2d;
+    color: white;
+}
+
+.status-card.theme-usf, .telemetry-card.theme-usf {
+    background-color: #004a80;
+    color: white;
+}
+
+/*
+  Control Terminal: Styles for the control terminal area.
+*/
+#controlTerminal {
+    height: 300px;
+    overflow-y: auto;
+    background: #1e1e1e;
+    color: #fff;
+    padding: 10px;
+    font-family: monospace;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+#controlTerminal .log-entry {
+    padding: 4px 8px;
+    border-radius: 2px;
+    margin: 2px 0;
+}
+
+#controlTerminal .log-entry.info {
+    color: #4CAF50;
+}
+
+#controlTerminal .log-entry.error {
+    color: #f44336;
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+#controlTerminal .log-entry.command {
+    color: #2196F3;
+    background-color: rgba(33, 150, 243, 0.1);
+}
+
+/*
+  Alerts Settings Container: Layout for the alerts settings area.
+*/
+.alerts-settings-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.sms-section {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.sms-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.phone-input-section {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.phone-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.carrier-select {
+  min-width: 150px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.add-phone-btn {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-phone-btn:hover {
+  background-color: #0056b3;
+}
+
+.validation-msg {
+  color: #dc3545;
+  font-size: 14px;
+  margin-top: 5px;
+  min-height: 20px;
+}
+
+.phone-list {
+  margin-top: 20px;
+}
+
+.phone-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.phone-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.carrier-badge {
+  background: #e9ecef;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.remove-phone {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 16px;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.remove-phone:hover {
+  opacity: 1;
+}
+
+.alert-preferences {
+  background: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.alert-toggle {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.test-alerts-section {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.test-btn {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.test-btn:hover {
+  background-color: #218838;
+}
+
+.test-alert-status {
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+/*
+  Toggle Switch Styles: Custom styles for on/off switches.
+*/
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+  background-color: #2196F3;
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}

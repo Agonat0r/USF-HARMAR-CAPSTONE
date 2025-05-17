@@ -1,0 +1,1480 @@
+<!--
+index.html - VPL Monitoring Dashboard Web App
+
+This file provides the main web interface for the VPL system, including:
+- Login screen for user authentication
+- Multi-tab dashboard for monitoring and controlling the VPL
+- MQTT.js for real-time communication with the backend (EMQX broker)
+- EmailJS for sending email and SMS alerts
+- Firebase for Firestore integration (if enabled)
+- Responsive design and customization options
+-->
+<!DOCTYPE html>
+<!--
+  The <html> tag is the root of the HTML document. The 'lang' attribute specifies the language as English.
+-->
+<html lang="en">
+<!--
+  The <head> section contains meta-information about the document, such as encoding, title, and links to scripts and styles.
+-->
+<head>
+  <!--
+    Sets the character encoding to UTF-8, which supports most characters from all languages.
+  -->
+  <meta charset="UTF-8" />
+  <!--
+    Ensures the page is responsive by setting the viewport to match the device's width and initial zoom level.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!--
+    The title of the web page, shown in the browser tab.
+  -->
+  <title>VPL Monitoring Dashboard</title>
+
+  <!--
+    Firebase SDK scripts for app and Firestore database compatibility.
+    These allow the app to use Firebase services if enabled.
+  -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <!--
+    MQTT.js library for connecting to MQTT brokers from the browser.
+    Enables real-time communication with the backend.
+  -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <!--
+    EmailJS library for sending emails and SMS from the browser.
+    Used for alert notifications.
+  -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script type="text/javascript">
+    // EmailJS configuration variables. Replace with your actual keys for production.
+    const EMAILJS_PUBLIC_KEY = '7osg1XmfdRC2z68Xt'; // Replace with your actual public key
+    const EMAILJS_SERVICE_ID = 'service_lsa1r4i'; // Replace with your actual service ID
+    const EMAILJS_TEMPLATE_ID = 'template_vnrbr1d'; // Replace with your actual template ID
+    
+    // Immediately-invoked function to initialize EmailJS when the script loads.
+    (function() {
+      console.log('Initializing EmailJS...');
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+      console.log('EmailJS initialized successfully');
+    })();
+  </script>
+
+  <!--
+    Link to the external CSS stylesheet for all page styles.
+  -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<!--
+  The <body> contains all the visible content and interactive elements of the web app.
+-->
+<body>
+  <!--
+    Login Screen: This section is shown first and allows users to log in.
+    The 'login-screen' div contains the login form elements.
+  -->
+  <div id="login-screen" class="login-container">
+    <div class="login-box">
+      <!--
+        The main title for the login screen. The 'data-translate' attribute is used for language translation.
+      -->
+      <h2 id="login-title" data-translate="loginTitle">🔐 USF Harmar MQTT Login</h2>
+      <!--
+        Username input field. 'required' means the user must fill this in to submit the form.
+      -->
+      <input type="text" id="login-username" placeholder="Username" required data-translate="username">
+      <!--
+        Password input field. The type 'password' hides the input text for security.
+      -->
+      <input type="password" id="login-password" placeholder="Password" required data-translate="password">
+      <!--
+        Login button. When clicked, triggers the login action.
+      -->
+      <button data-action="login" class="btn btn-primary" data-translate="loginButton">Login</button>
+    </div>
+  </div>
+
+  <!--
+    Main App: This section is hidden by default and shown after successful login.
+    Contains the dashboard and all main features.
+  -->
+  <div id="main-app" class="hidden">
+    <!--
+      Navigation Bar: Contains the dashboard title, tab selector, and connection status.
+    -->
+    <nav class="navbar">
+      <!--
+        Dashboard title. 'data-translate' allows for language switching.
+      -->
+      <div class="nav-title" data-translate="dashboard">VPL Monitoring Dashboard</div>
+      <!--
+        Tab selector dropdown. Allows switching between different dashboard sections.
+      -->
+      <select id="tab-selector" data-action="switch-tab" class="tab-selector">
+        <option value="general" data-translate="general">General</option>
+        <option value="status" data-translate="status">Status</option>
+        <option value="controls" data-translate="controls">Controls</option>
+        <option value="alerts" data-translate="alerts">Alerts</option>
+        <option value="customization" data-translate="customization">Customization</option>
+        <option value="email-alerts" data-translate="emailAlerts">Email Alerts</option>
+        <option value="sms-alerts" data-translate="smsAlerts">SMS Alerts</option>
+      </select>
+      <!--
+        Connection status indicator. Shows if the app is connected to the MQTT broker.
+        The class changes color based on connection state.
+      -->
+      <div id="connectionStatus" class="status-indicator status-disconnected">
+        Disconnected
+      </div>
+    </nav>
+
+    <!--
+      Main Content Area: This is where the content for each selected tab is displayed.
+    -->
+    <div class="container">
+      <!--
+        General Tab: The default tab shown after login. Displays general messages and command terminals.
+      -->
+      <div id="general-tab" class="tab-content">
+        <div class="terminal-container">
+          <!--
+            General Terminal Section: Shows general messages from the system.
+          -->
+          <div class="terminal-section">
+            <h2 id="general-title" data-translate="generalConsole">General Terminal</h2>
+            <!--
+              Terminal display area for general messages. Initially shows a waiting message.
+            -->
+            <div class="terminal" id="messageLog">Waiting for messages...</div>
+            <!--
+              Terminal buttons: Allow the user to clear, export, or email the log.
+            -->
+            <div class="terminal-buttons">
+              <button data-action="clearTerminal" data-target="messageLog" class="terminal-btn">Clear</button>
+              <button data-action="export-log" data-target="messageLog" class="terminal-btn">Export</button>
+              <button data-action="email-log" data-target="messageLog" class="terminal-btn">Email</button>
+            </div>
+          </div>
+
+          <!--
+            Command Terminal Section: Shows command history and allows command log actions.
+          -->
+          <div class="terminal-section">
+            <h2 id="commands-title" data-translate="commandConsole">Command Terminal</h2>
+            <!--
+              Terminal display area for command messages. Initially shows a waiting message.
+            -->
+            <div class="terminal" id="commandLog">Waiting for commands...</div>
+            <!--
+              Terminal buttons: Allow the user to clear, export, or email the command log.
+            -->
+            <div class="terminal-buttons">
+              <button onclick="clearTerminal('commandLog')" class="terminal-btn">Clear</button>
+              <button onclick="exportLog('commandLog')" class="terminal-btn">Export</button>
+              <button onclick="emailLog('commandLog')" class="terminal-btn">Email</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        Status Tab: Displays connection status, last update, VPL state, and telemetry data.
+        Hidden by default until the user selects the tab.
+      -->
+      <div id="status-tab" class="tab-content hidden">
+        <!--
+          Status Grid: Shows key status information in card format.
+        -->
+        <div class="status-grid">
+          <div class="status-card">
+            <!--
+              Shows the current connection status to the MQTT broker.
+            -->
+            <h3 data-translate="connectionStatus">Connection Status</h3>
+            <p id="mqttStatus" data-translate="notConnected">Not Connected</p>
+          </div>
+          <div class="status-card">
+            <!--
+              Shows the timestamp of the last update received from the system.
+            -->
+            <h3 data-translate="lastUpdate">Last Update</h3>
+            <p id="lastUpdate" data-translate="never">Never</p>
+          </div>
+          <div class="status-card">
+            <!--
+              Shows the current state of the VPL (e.g., running, stopped).
+            -->
+            <h3 data-translate="vplState">VPL State</h3>
+            <p id="vplState" data-translate="unknown">Unknown</p>
+          </div>
+        </div>
+        <!--
+          Telemetry Grid: Displays real-time telemetry data such as position, speed, and temperature.
+        -->
+        <div class="telemetry-grid">
+          <div class="telemetry-card">
+            <!--
+              Shows the current position of the VPL.
+            -->
+            <h3 data-translate="position">Position</h3>
+            <p id="position">-</p>
+          </div>
+          <div class="telemetry-card">
+            <!--
+              Shows the current speed of the VPL.
+            -->
+            <h3 data-translate="speed">Speed</h3>
+            <p id="speed">-</p>
+          </div>
+          <div class="telemetry-card">
+            <!--
+              Shows the current temperature reading from the VPL.
+            -->
+            <h3 data-translate="temperature">Temperature</h3>
+            <p id="temperature">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        Commands Tab: Allows users to view and manage command history.
+        Hidden by default until the user selects the tab.
+      -->
+      <div id="commands-tab" class="tab-content hidden">
+        <!--
+          Title for the command console section.
+        -->
+        <h2 data-translate="commandConsole">Command Console</h2>
+        <!--
+          Preformatted text area to display the command history.
+          'pre' tag preserves formatting and line breaks.
+        -->
+        <pre id="command-history" class="terminal">Command history will appear here...</pre>
+        <!--
+          Terminal controls: Buttons to clear, export, or email the command history log.
+        -->
+        <div class="terminal-controls">
+          <button data-action="clearTerminal" data-target="command-history" data-translate="clearTerminal">Clear History</button>
+          <button data-action="export-log" data-target="command-history" data-translate="exportLog">Export History</button>
+          <button data-action="email-log" data-target="command-history" data-translate="emailLog">Email History</button>
+        </div>
+      </div>
+
+      <!--
+        Controls Tab: Provides buttons for controlling the VPL (e.g., move up, down, stop, brake).
+        Hidden by default until the user selects the tab.
+      -->
+      <div id="controls-tab" class="tab-content hidden">
+        <!--
+          Title for the controls section.
+        -->
+        <h2>VPL Controls</h2>
+        <!--
+          Control buttons: Allow the user to send movement and brake commands to the VPL.
+        -->
+        <div class="control-buttons">
+          <button class="control-btn">UP</button>
+          <button class="control-btn">STOP</button>
+          <button class="control-btn">DOWN</button>
+          <button class="control-btn">APPLY BRAKE</button>
+          <button class="control-btn">RELEASE BRAKE</button>
+        </div>
+        <!--
+          Control Terminal Section: Displays control command logs and provides log actions.
+        -->
+        <div class="control-terminal-section">
+          <h3>Control Terminal</h3>
+          <!--
+            Terminal area for control command messages.
+          -->
+          <div id="controlTerminal" class="terminal">Waiting for control commands...</div>
+          <!--
+            Terminal buttons: Allow the user to clear, export, or email the control log.
+          -->
+          <div class="terminal-buttons">
+            <button data-action="clearTerminal" data-target="controlTerminal" class="terminal-btn">Clear</button>
+            <button data-action="export-log" data-target="controlTerminal" class="terminal-btn">Export</button>
+            <button data-action="email-log" data-target="controlTerminal" class="terminal-btn">Email</button>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        Alerts Tab: Displays lists of red, amber, and green alarms.
+        Hidden by default until the user selects the tab.
+      -->
+      <div id="alerts-tab" class="tab-content hidden">
+        <div class="alerts-container">
+          <div class="alert-section">
+            <!--
+              Section for displaying critical (red) alarms.
+            -->
+            <h3>Red Alarms</h3>
+            <div id="redAlarms" class="alert-list"></div>
+          </div>
+          <div class="alert-section">
+            <!--
+              Section for displaying warning (amber) alarms.
+            -->
+            <h3>Amber Alarms</h3>
+            <div id="amberAlarms" class="alert-list"></div>
+          </div>
+          <div class="alert-section">
+            <!--
+              Section for displaying informational (green) alarms.
+            -->
+            <h3>Green Alarms</h3>
+            <div id="greenAlarms" class="alert-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        Customization Tab: Allows users to personalize the dashboard appearance and behavior.
+        Hidden by default until the user selects the tab.
+      -->
+      <div id="customization-tab" class="tab-content hidden">
+        <!--
+          Title for the customization section. Uses data-translate for language support.
+        -->
+        <h2 id="customization-title" data-translate="customization">Customization</h2>
+        <!--
+          Customization grid: Organizes customization options into cards for clarity.
+        -->
+        <div class="customization-grid">
+          <div class="customization-card">
+            <!--
+              Theme selector: Allows the user to choose a color theme for the dashboard.
+            -->
+            <h3 data-translate="theme">Theme</h3>
+            <select id="themeSelector" data-action="apply-theme">
+              <option value="default" data-translate="themeDefault">Default</option>
+              <option value="dark" data-translate="themeDark">Dark</option>
+              <option value="usf" data-translate="themeUsf">USF Theme</option>
+            </select>
+          </div>
+          <div class="customization-card">
+            <!--
+              Font selector: Allows the user to change the font style of the dashboard.
+            -->
+            <h3 data-translate="font">Font</h3>
+            <select id="fontSelector" data-action="apply-font">
+              <option value="default" data-translate="fontDefault">Default</option>
+              <option value="monospace" data-translate="fontMonospace">Monospace</option>
+              <option value="sans-serif" data-translate="fontSansSerif">Sans Serif</option>
+            </select>
+          </div>
+          <div class="customization-card">
+            <!--
+              Language selector: Allows the user to switch the dashboard language.
+            -->
+            <h3 data-translate="language">Language</h3>
+            <select id="languageSelector" data-action="switch-language">
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+            </select>
+          </div>
+          <div class="customization-card">
+            <!--
+              Show Borders toggle: Lets the user enable or disable borders around dashboard elements.
+            -->
+            <h3 data-translate="showBorders">Show Borders</h3>
+            <input type="checkbox" id="borderToggle" data-action="apply-borders">
+          </div>
+          <div class="customization-card">
+            <!--
+              Email Alert Rate: User can set the minimum interval between email alerts (in minutes).
+            -->
+            <h3>Email Alert Rate</h3>
+            <label for="emailRateLimit">Minimum minutes between emails:</label>
+            <input type="number" id="emailRateLimit" min="1" max="60" step="1" value="5">
+          </div>
+          <div class="customization-card">
+            <!--
+              SMS Alert Rate: User can set the minimum interval between SMS alerts (in minutes).
+            -->
+            <h3>SMS Alert Rate</h3>
+            <label for="smsRateLimit">Minimum minutes between SMS:</label>
+            <input type="number" id="smsRateLimit" min="1" max="60" step="1" value="5">
+          </div>
+        </div>
+        <!--
+          Button to reset all customizations to their default values.
+        -->
+        <button id="resetCustomizations" data-action="reset-customizations" data-translate="reset">Reset to Default</button>
+      </div>
+
+      <!--
+        Email Alerts Tab: Allows users to manage email alert settings and preferences.
+        Hidden by default until the user selects the tab.
+      -->
+      <div id="email-alerts-tab" class="tab-content hidden">
+        <div class="alerts-settings-container">
+          <!-- Email Alerts Section -->
+          <div class="email-section">
+            <h3>Email Alerts</h3>
+            <div class="email-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="emailAlertEnabled">
+                <span class="toggle-slider"></span>
+              </label>
+              <span>Enable Email Alerts</span>
+            </div>
+
+            <div class="email-input-section">
+              <input type="email" id="emailAlertInput" class="email-input" placeholder="Enter email address" data-translate="enterEmail">
+              <button id="addEmailAlertBtn" class="add-email-btn">Add Email</button>
+            </div>
+            <div id="emailValidationMsg" class="validation-msg"></div>
+
+            <div id="emailList" class="email-list">
+              <!-- Email items will be added here dynamically -->
+            </div>
+          </div>
+
+          <!-- Common Alert Preferences Section -->
+          <div class="alert-preferences">
+            <h3>Alert Preferences</h3>
+            <div class="alert-toggle">
+              <input type="checkbox" id="redAlertEnabled" checked>
+              <label for="redAlertEnabled">Red Alerts (Critical)</label>
+            </div>
+            <div class="alert-toggle">
+              <input type="checkbox" id="amberAlertEnabled" checked>
+              <label for="amberAlertEnabled">Amber Alerts (Warning)</label>
+            </div>
+            <div class="alert-toggle">
+              <input type="checkbox" id="greenAlertEnabled">
+              <label for="greenAlertEnabled">Green Alerts (Info)</label>
+            </div>
+          </div>
+
+          <!-- Test Alerts Section -->
+          <div class="test-alerts-section">
+            <button id="testEmailBtn" class="test-btn">Send Test Email</button>
+            <button id="testSmsBtn" class="test-btn">Send Test SMS</button>
+            <div id="testAlertStatus" class="test-alert-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMS Alerts Tab -->
+      <div id="sms-alerts-tab" class="tab-content hidden">
+        <div class="alerts-settings-container">
+          <div class="sms-section">
+            <h3>SMS Alerts</h3>
+            <div class="sms-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="smsAlertEnabled2">
+                <span class="toggle-slider"></span>
+              </label>
+              <span>Enable SMS Alerts</span>
+            </div>
+
+            <div class="phone-input-section">
+              <input type="tel" id="phoneInput2" class="phone-input" placeholder="Enter phone number (e.g., +1234567890)" data-translate="enterPhone">
+              <select id="carrierSelect2" class="carrier-select">
+                <option value="verizon">Verizon</option>
+                <option value="att">AT&T</option>
+                <option value="tmobile">T-Mobile</option>
+                <option value="sprint">Sprint</option>
+                <option value="boost">Boost Mobile</option>
+                <option value="cricket">Cricket</option>
+                <option value="uscellular">US Cellular</option>
+                <option value="metro">Metro</option>
+              </select>
+              <button id="addPhoneBtn2" class="add-phone-btn">Add Phone</button>
+            </div>
+            <div id="phoneValidationMsg2" class="validation-msg"></div>
+
+            <div id="phoneList2" class="phone-list">
+              <!-- Phone numbers will be added here dynamically -->
+            </div>
+          </div>
+
+          <!-- Alert Preferences -->
+          <div class="alert-preferences">
+            <h3>Alert Preferences</h3>
+            <div class="alert-toggle">
+              <input type="checkbox" id="redAlertEnabled2" checked>
+              <label for="redAlertEnabled2">Red Alerts (Critical)</label>
+            </div>
+            <div class="alert-toggle">
+              <input type="checkbox" id="amberAlertEnabled2" checked>
+              <label for="amberAlertEnabled2">Amber Alerts (Warning)</label>
+            </div>
+            <div class="alert-toggle">
+              <input type="checkbox" id="greenAlertEnabled2">
+              <label for="greenAlertEnabled2">Green Alerts (Info)</label>
+            </div>
+          </div>
+
+          <!-- Test SMS Section -->
+          <div class="test-alerts-section">
+            <button id="testSmsBtn2" class="test-btn">Send Test SMS</button>
+            <div id="testAlertStatus2" class="test-alert-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div id="settings" class="tab-content hidden">
+        <div class="settings-section">
+          <h2 data-translate="alertSettings">Alert Settings</h2>
+          
+          <!-- Email Alerts -->
+          <div class="email-alerts">
+            <h3 data-translate="emailAlerts">Email Alerts</h3>
+            <div id="emailList"></div>
+            <div class="add-email">
+              <input type="email" id="emailInput" data-translate="enterEmail" placeholder="Enter email address">
+              <button onclick="addEmailSubscriber()" data-translate="addEmail">Add Email</button>
+            </div>
+            <button id="testEmailBtn" data-translate="sendTestEmail">Send Test Email</button>
+          </div>
+
+          <!-- Phone Alerts -->
+          <div class="phone-alerts">
+            <h3 data-translate="phoneAlerts">Phone Alerts</h3>
+            <div id="phoneList"></div>
+            <div class="add-phone">
+              <input type="tel" id="phoneInput" data-translate="enterPhone" placeholder="Enter phone number">
+              <button onclick="addPhoneSubscriber()" data-translate="addPhone">Add Phone</button>
+            </div>
+            <button id="testSMSBtn" onclick="sendTestSMS()" data-translate="sendTestSMS">Send Test SMS</button>
+          </div>
+        </div>
+
+        <!-- Other settings sections -->
+        <!-- ... existing code ... -->
+      </div>
+    </div>
+
+    <!-- Email Modal -->
+    <div id="emailModal" class="modal hidden">
+      <div class="modal-content">
+        <h3 data-translate="emailModalTitle">Send Log via Email</h3>
+        <input type="email" id="emailInput" placeholder="Enter email address" data-translate="emailPlaceholder">
+        <div class="modal-buttons">
+          <button data-action="send-email" data-translate="sendEmail">Send</button>
+          <button data-action="close-modal" data-translate="cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Elements -->
+  <audio id="click-sound" src="sounds/click.mp3" preload="auto"></audio>
+
+  <!-- App Script -->
+  <script type="module" src="translations.js"></script>
+  <script type="module" src="mqtt-dashboard.js"></script>
+  <script src="static/js/sms-alerts.js"></script>
+
+  <script>
+    // MQTT Configuration
+    const brokerConfig = {
+      host: 'lb88002c.ala.us-east-1.emqxsl.com',
+      port: 8084,
+      path: '/mqtt',
+      username: 'Carlos',
+      password: 'mqtt2025',
+      clientId: 'webClient_' + Math.random().toString(16).substr(2, 8)
+    };
+
+    // Initialize MQTT client
+    window.client = null;
+
+    // Initialize MQTT connection
+    function initializeMQTTClient() {
+      // Connect to MQTT broker using MQTT.js
+      window.client = mqtt.connect(`wss://${brokerConfig.host}:${brokerConfig.port}${brokerConfig.path}`, {
+        username: brokerConfig.username,
+        password: brokerConfig.password,
+        clientId: brokerConfig.clientId,
+        clean: true,
+        rejectUnauthorized: false
+      });
+
+      // Set up connection handling
+      window.client.on('connect', () => {
+        console.log('Connected to MQTT broker');
+        const statusIndicator = document.getElementById('connectionStatus');
+        if (statusIndicator) {
+          statusIndicator.textContent = 'Connected';
+          statusIndicator.className = 'status-indicator status-connected';
+        }
+
+        // Subscribe to topics
+        const topics = [
+          'usf/messages',
+          'usf/logs/alerts',
+          'usf/logs/general',
+          'usf/logs/command',
+          'usf/status',
+          'usf/telemetry'
+        ];
+        
+        topics.forEach(topic => {
+          window.client.subscribe(topic, (err) => {
+            if (err) {
+              console.error('Subscription error for ' + topic + ':', err);
+            } else {
+              console.log('Subscribed to ' + topic);
+            }
+          });
+        });
+      });
+
+      // Handle incoming messages
+      window.client.on('message', function(topic, message) {
+        try {
+          const msg = JSON.parse(message.toString());
+          if (topic === "usf/alerts/email") {
+            sendEmailAlert(msg.alert_type.toLowerCase(), msg.message);
+          }
+          // ... existing message handling code ...
+        } catch (error) {
+          console.error('Error processing MQTT message:', error);
+        }
+      });
+
+      // Handle connection loss
+      window.client.on('close', () => {
+        console.log('Disconnected from MQTT broker');
+        const statusIndicator = document.getElementById('connectionStatus');
+        if (statusIndicator) {
+          statusIndicator.textContent = 'Disconnected';
+          statusIndicator.className = 'status-indicator status-disconnected';
+        }
+      });
+
+      // Handle errors
+      window.client.on('error', (error) => {
+        console.error('MQTT Error:', error);
+        const statusIndicator = document.getElementById('connectionStatus');
+        if (statusIndicator) {
+          statusIndicator.textContent = 'Error';
+          statusIndicator.className = 'status-indicator status-error';
+        }
+      });
+    }
+
+    // Initialize MQTT when the document is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeMQTTClient();
+    });
+
+    function startAction(dir) {
+      const timestamp = new Date().toISOString();
+      const command = `COMMAND:${dir.toUpperCase()}`;
+      
+      // Create message in the same format as HMIESP32.C
+      const msg = {
+        type: "command",
+        message: command,
+        timestamp: timestamp
+      };
+
+      // Add to command terminal
+      const terminalMsg = `[${timestamp}] ${command}\n`;
+      const terminal = document.getElementById('serialMonitor');
+      terminal.textContent += terminalMsg;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Send via MQTT
+      if (mqtt_connected) {
+        mqtt_client.publish("usf/logs/command", JSON.stringify(msg));
+      }
+
+      fetch('/' + dir + '_start').catch(e => console.error(e));
+    }
+
+    function stopAction() {
+      const timestamp = new Date().toISOString();
+      const command = "COMMAND:STOP";
+      
+      // Create message in the same format as HMIESP32.C
+      const msg = {
+        type: "command",
+        message: command,
+        timestamp: timestamp
+      };
+
+      // Add to command terminal
+      const terminalMsg = `[${timestamp}] ${command}\n`;
+      const terminal = document.getElementById('serialMonitor');
+      terminal.textContent += terminalMsg;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Send via MQTT
+      if (mqtt_connected) {
+        mqtt_client.publish("usf/logs/command", JSON.stringify(msg));
+      }
+
+      fetch('/stop').catch(e => console.error(e));
+    }
+
+    function applyBrake() {
+      const timestamp = new Date().toISOString();
+      const command = "COMMAND:BRAKE";
+      
+      // Create message in the same format as HMIESP32.C
+      const msg = {
+        type: "command",
+        message: command,
+        timestamp: timestamp
+      };
+
+      // Add to command terminal
+      const terminalMsg = `[${timestamp}] ${command}\n`;
+      const terminal = document.getElementById('serialMonitor');
+      terminal.textContent += terminalMsg;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Send via MQTT
+      if (mqtt_connected) {
+        mqtt_client.publish("usf/logs/command", JSON.stringify(msg));
+      }
+
+      fetch('/apply_brake').catch(e => console.error(e));
+    }
+
+    function releaseBrake() {
+      const timestamp = new Date().toISOString();
+      const command = "COMMAND:RELEASE";
+      
+      // Create message in the same format as HMIESP32.C
+      const msg = {
+        type: "command",
+        message: command,
+        timestamp: timestamp
+      };
+
+      // Add to command terminal
+      const terminalMsg = `[${timestamp}] ${command}\n`;
+      const terminal = document.getElementById('serialMonitor');
+      terminal.textContent += terminalMsg;
+      terminal.scrollTop = terminal.scrollHeight;
+
+      // Send via MQTT
+      if (mqtt_connected) {
+        mqtt_client.publish("usf/logs/command", JSON.stringify(msg));
+      }
+
+      fetch('/release_brake').catch(e => console.error(e));
+    }
+
+    // Helper function to publish MQTT messages
+    function publishToMQTT(topic, message) {
+        // This function should be defined in your MQTT client setup
+        // It will use the MQTT.js client to publish the message
+        if (window.mqttClient && window.mqttClient.connected) {
+            window.mqttClient.publish(topic, message);
+        } else {
+            console.error('MQTT client not connected');
+        }
+    }
+
+    // Email Alert Management
+    const emailInput = document.getElementById('emailAlertInput');
+    const addEmailBtn = document.getElementById('addEmailAlertBtn');
+    const emailList = document.getElementById('emailList');
+    const emailValidationMsg = document.getElementById('emailValidationMsg');
+    const emailAlertEnabled = document.getElementById('emailAlertEnabled');
+    
+    // Load saved email settings
+    window.addEventListener('load', () => {
+      const savedEmails = JSON.parse(localStorage.getItem('emailAlerts') || '[]');
+      savedEmails.forEach(email => addEmailToList(email));
+      
+      const alertEnabled = localStorage.getItem('emailAlertEnabled') === 'true';
+      emailAlertEnabled.checked = alertEnabled;
+      
+      // Load alert preferences
+      document.getElementById('redAlertEnabled').checked = localStorage.getItem('redAlertEnabled') !== 'false';
+      document.getElementById('amberAlertEnabled').checked = localStorage.getItem('amberAlertEnabled') !== 'false';
+      document.getElementById('greenAlertEnabled').checked = localStorage.getItem('greenAlertEnabled') === 'true';
+    });
+
+    // Email validation function
+    function isValidEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    // Add email to the list
+    function addEmailToList(email) {
+      const emailItem = document.createElement('div');
+      emailItem.className = 'email-item';
+      emailItem.innerHTML = `
+        <span class="email-text">${email}</span>
+        <button class="delete-email-btn" onclick="removeEmail(this)">×</button>
+      `;
+      emailList.appendChild(emailItem);
+      saveEmails();
+    }
+
+    // Remove email from the list
+    function removeEmail(button) {
+      button.parentElement.remove();
+      saveEmails();
+    }
+
+    // Save emails to localStorage
+    function saveEmails() {
+      const emails = Array.from(emailList.querySelectorAll('.email-text'))
+        .map(span => span.textContent);
+      localStorage.setItem('emailAlerts', JSON.stringify(emails));
+    }
+
+    // Add email button click handler
+    addEmailBtn.addEventListener('click', () => {
+      const email = emailInput.value.trim();
+      if (!email) {
+        emailValidationMsg.textContent = 'Please enter an email address';
+        emailValidationMsg.style.color = '#ff4444';
+        return;
+      }
+      if (!isValidEmail(email)) {
+        emailValidationMsg.textContent = 'Please enter a valid email address';
+        emailValidationMsg.style.color = '#ff4444';
+        return;
+      }
+      
+      const existingEmails = Array.from(emailList.querySelectorAll('.email-text'))
+        .map(span => span.textContent);
+      if (existingEmails.includes(email)) {
+        emailValidationMsg.textContent = 'This email is already in the list';
+        emailValidationMsg.style.color = '#ff4444';
+        return;
+      }
+
+      addEmailToList(email);
+      emailInput.value = '';
+      emailValidationMsg.textContent = 'Email added successfully';
+      emailValidationMsg.style.color = '#4CAF50';
+      setTimeout(() => {
+        emailValidationMsg.textContent = '';
+      }, 3000);
+    });
+
+    // Save email alert enabled state
+    emailAlertEnabled.addEventListener('change', () => {
+      localStorage.setItem('emailAlertEnabled', emailAlertEnabled.checked);
+    });
+
+    // Save alert preferences
+    ['red', 'amber', 'green'].forEach(type => {
+      const checkbox = document.getElementById(`${type}AlertEnabled`);
+      checkbox.addEventListener('change', () => {
+        localStorage.setItem(`${type}AlertEnabled`, checkbox.checked);
+      });
+    });
+
+    // --- Email and SMS Alert Rate Limiting ---
+    function getLastEmailSent() {
+      return parseInt(localStorage.getItem('lastEmailSent') || '0');
+    }
+    function setLastEmailSent(ts) {
+      localStorage.setItem('lastEmailSent', ts.toString());
+    }
+    function getLastSmsSent() {
+      return parseInt(localStorage.getItem('lastSmsSent') || '0');
+    }
+    function setLastSmsSent(ts) {
+      localStorage.setItem('lastSmsSent', ts.toString());
+    }
+
+    // Patch sendEmailAlert to enforce rate limit
+    const originalSendEmailAlert = window.sendEmailAlert || sendEmailAlert;
+    window.sendEmailAlert = async function(type, message) {
+      const now = Date.now();
+      const minIntervalMin = parseInt(localStorage.getItem('emailRateLimit')) || 5;
+      const minIntervalMs = minIntervalMin * 60 * 1000;
+      const lastSent = getLastEmailSent();
+      if (now - lastSent < minIntervalMs) {
+        showMessage('Email rate limit reached. Please wait before sending another email.', 'error');
+        return;
+      }
+      setLastEmailSent(now);
+      return originalSendEmailAlert(type, message);
+    };
+
+    // Patch sendSmsAlert to enforce rate limit
+    const originalSendSmsAlert = window.sendSmsAlert || sendSmsAlert;
+    window.sendSmsAlert = async function(type, message) {
+      const now = Date.now();
+      const minIntervalMin = parseInt(localStorage.getItem('smsRateLimit')) || 5;
+      const minIntervalMs = minIntervalMin * 60 * 1000;
+      const lastSent = getLastSmsSent();
+      if (now - lastSent < minIntervalMs) {
+        showMessage('SMS rate limit reached. Please wait before sending another SMS.', 'error');
+        return;
+      }
+      setLastSmsSent(now);
+      return originalSendSmsAlert(type, message);
+    };
+
+    // Move these functions to the global scope
+    window.isValidPhone = function(phone) {
+      return /^\+?[1-9]\d{1,14}$/.test(phone);
+    }
+
+    window.removePhone = function(button) {
+      button.parentElement.remove();
+      savePhones();
+    }
+
+    window.savePhones = function() {
+      const phoneList = document.getElementById('phoneList');
+      const phones = Array.from(phoneList.querySelectorAll('.phone-text'))
+        .map(span => span.textContent);
+      localStorage.setItem('smsAlerts', JSON.stringify(phones));
+    }
+
+    window.addPhoneToList = function(phone, carrier, targetPhoneList) {
+      if (!targetPhoneList) return;
+      const phoneItem = document.createElement('div');
+      phoneItem.className = 'phone-item';
+      phoneItem.innerHTML = `
+        <span class="phone-text">${phone}</span>
+        <span class="carrier-text">(${carrier})</span>
+        <button class="delete-phone-btn" onclick="removePhone(this)">×</button>
+      `;
+      targetPhoneList.appendChild(phoneItem);
+      savePhones();
+    }
+
+    // Add phone button click handler for SMS tab
+    document.addEventListener('DOMContentLoaded', function() {
+      // Original SMS handlers (in email alerts tab)
+      const phoneInput = document.getElementById('phoneInput');
+      const carrierSelect = document.getElementById('carrierSelect');
+      const addPhoneBtn = document.getElementById('addPhoneBtn');
+      const phoneValidationMsg = document.getElementById('phoneValidationMsg');
+      const smsAlertEnabled = document.getElementById('smsAlertEnabled');
+      const testSmsBtn = document.getElementById('testSmsBtn');
+      const testAlertStatus = document.getElementById('testAlertStatus');
+      const phoneList = document.getElementById('phoneList');
+
+      // SMS tab specific handlers
+      const phoneInput2 = document.getElementById('phoneInput2');
+      const carrierSelect2 = document.getElementById('carrierSelect2');
+      const addPhoneBtn2 = document.getElementById('addPhoneBtn2');
+      const phoneValidationMsg2 = document.getElementById('phoneValidationMsg2');
+      const smsAlertEnabled2 = document.getElementById('smsAlertEnabled2');
+      const testSmsBtn2 = document.getElementById('testSmsBtn2');
+      const testAlertStatus2 = document.getElementById('testAlertStatus2');
+      const phoneList2 = document.getElementById('phoneList2');
+
+      // Load saved phone numbers for SMS tab
+      const savedPhones = JSON.parse(localStorage.getItem('smsAlerts') || '[]');
+      savedPhones.forEach(phone => {
+        const carrier = localStorage.getItem(`carrier_${phone}`) || 'Unknown';
+        // Add to both tabs
+        if (phoneList) addPhoneToList(phone, carrier, phoneList);
+        if (phoneList2) addPhoneToList(phone, carrier, phoneList2);
+      });
+
+      // Load SMS alert enabled state
+      const smsEnabled = localStorage.getItem('smsAlertEnabled') === 'true';
+      if (smsAlertEnabled) smsAlertEnabled.checked = smsEnabled;
+      if (smsAlertEnabled2) smsAlertEnabled2.checked = smsEnabled;
+
+      // Update addPhoneToList function to accept phoneList parameter
+      window.addPhoneToList = function(phone, carrier, targetPhoneList) {
+        if (!targetPhoneList) return;
+        const phoneItem = document.createElement('div');
+        phoneItem.className = 'phone-item';
+        phoneItem.innerHTML = `
+          <span class="phone-text">${phone}</span>
+          <span class="carrier-text">(${carrier})</span>
+          <button class="delete-phone-btn" onclick="removePhone(this)">×</button>
+        `;
+        targetPhoneList.appendChild(phoneItem);
+        savePhones();
+      };
+
+      // Add phone button click handler for SMS tab
+      if (addPhoneBtn2) {
+        addPhoneBtn2.addEventListener('click', function() {
+          const phone = phoneInput2.value.trim();
+          const carrier = carrierSelect2.value;
+          
+          if (!phone) {
+            phoneValidationMsg2.textContent = 'Please enter a phone number';
+            phoneValidationMsg2.style.color = '#ff4444';
+            return;
+          }
+          
+          if (!isValidPhone(phone)) {
+            phoneValidationMsg2.textContent = 'Please enter a valid phone number (e.g., +1234567890)';
+            phoneValidationMsg2.style.color = '#ff4444';
+            return;
+          }
+          
+          const existingPhones = Array.from(document.querySelectorAll('.phone-text'))
+            .map(span => span.textContent);
+          if (existingPhones.includes(phone)) {
+            phoneValidationMsg2.textContent = 'This phone number is already in the list';
+            phoneValidationMsg2.style.color = '#ff4444';
+            return;
+          }
+
+          // Save carrier preference
+          localStorage.setItem(`carrier_${phone}`, carrier);
+          
+          // Add to both tabs
+          addPhoneToList(phone, carrier, phoneList);
+          addPhoneToList(phone, carrier, phoneList2);
+          
+          phoneInput2.value = '';
+          phoneValidationMsg2.textContent = 'Phone number added successfully';
+          phoneValidationMsg2.style.color = '#4CAF50';
+          setTimeout(() => {
+            phoneValidationMsg2.textContent = '';
+          }, 3000);
+        });
+      }
+
+      // Save SMS alert enabled state for SMS tab
+      if (smsAlertEnabled2) {
+        smsAlertEnabled2.addEventListener('change', function() {
+          const isEnabled = smsAlertEnabled2.checked;
+          localStorage.setItem('smsAlertEnabled', isEnabled);
+          if (smsAlertEnabled) smsAlertEnabled.checked = isEnabled;
+        });
+      }
+
+      // Test SMS button click handler for SMS tab
+      if (testSmsBtn2) {
+        testSmsBtn2.addEventListener('click', async () => {
+          if (!smsAlertEnabled2.checked) {
+            testAlertStatus2.textContent = 'Please enable SMS alerts first';
+            testAlertStatus2.style.color = '#ff4444';
+            return;
+          }
+
+          const phoneItems = Array.from(phoneList2.querySelectorAll('.phone-item'));
+          
+          if (phoneItems.length === 0) {
+            testAlertStatus2.textContent = 'Please add at least one phone number';
+            testAlertStatus2.style.color = '#ff4444';
+            return;
+          }
+
+          testSmsBtn2.disabled = true;
+          testAlertStatus2.textContent = 'Sending test SMS...';
+          testAlertStatus2.style.color = '#2196F3';
+
+          const errors = [];
+
+          try {
+            for (const phoneItem of phoneItems) {
+              try {
+                const phoneText = phoneItem.querySelector('.phone-text').textContent;
+                const carrier = phoneItem.querySelector('.carrier-text').textContent.replace(/[()]/g, '').toLowerCase();
+                
+                // Format phone number
+                const formattedPhone = formatPhoneForSMS(phoneText);
+                
+                // Get carrier gateway
+                const gateway = carrierGateways[carrier];
+                if (!gateway) {
+                  throw new Error(`Unsupported carrier: ${carrier}`);
+                }
+
+                const smsEmail = `${formattedPhone}@${gateway}`;
+                console.log('Sending test SMS via email gateway:', smsEmail); // Debug log
+                
+                const response = await emailjs.send(
+                  'service_lsa1r4i',
+                  'template_5usevip',
+                  {
+                    to_email: smsEmail,
+                    alert_type: 'TEST',
+                    alert_message: 'This is a test SMS alert from your VPL Monitoring system.',
+                    timestamp: new Date().toLocaleString()
+                  }
+                );
+
+                if (response.status !== 200) {
+                  throw new Error(`EmailJS API error: ${response.text}`);
+                }
+              } catch (error) {
+                let errorMsg = error && (error.text || error.message || error.toString());
+                errors.push(`Failed to send to ${phoneItem.querySelector('.phone-text').textContent}: ${errorMsg}`);
+              }
+            }
+
+            if (errors.length > 0) {
+              throw new Error(errors.join('\n'));
+            }
+
+            testAlertStatus2.textContent = 'Test SMS sent! Please wait a few minutes to receive it.';
+            testAlertStatus2.style.color = '#4CAF50';
+          } catch (error) {
+            console.error('Failed to send test SMS:', error);
+            testAlertStatus2.textContent = `Failed to send SMS: ${error.message}`;
+            testAlertStatus2.style.color = '#ff4444';
+          } finally {
+            testSmsBtn2.disabled = false;
+            setTimeout(() => {
+              if (testAlertStatus2.style.color === '#4CAF50') {
+                testAlertStatus2.textContent = '';
+              }
+            }, 10000);
+          }
+        });
+      }
+    });
+
+    // Add carrier gateway mappings with proper formatting
+    const carrierGateways = {
+      'verizon': 'vtext.com',
+      'att': 'txt.att.net',
+      'tmobile': 'tmomail.net',
+      'sprint': 'messaging.sprintpcs.com',
+      'boost': 'sms.myboostmobile.com',
+      'cricket': 'mms.cricketwireless.net',
+      'uscellular': 'email.uscc.net',
+      'metro': 'mymetropcs.com'
+    };
+
+    // Function to format phone number for SMS gateway
+    function formatPhoneForSMS(phone) {
+      // Remove all non-digits and any leading '+'
+      const digits = phone.replace(/\D/g, '');
+      
+      // For AT&T, some carriers require 10 digits (no country code)
+      // If number starts with '1' and has 11 digits, remove the '1'
+      if (digits.length === 11 && digits.startsWith('1')) {
+        return digits.substring(1);
+      }
+      
+      // If it's already 10 digits, use as is
+      if (digits.length === 10) {
+        return digits;
+      }
+      
+      throw new Error('Invalid phone number format. Please use 10-digit US number or 11-digit number starting with 1');
+    }
+
+    // Function to send SMS alerts using email-to-SMS gateways
+    async function sendSmsAlert(type, message) {
+      console.log('Attempting to send SMS alert:', { type, message });
+      
+      if (!smsAlertEnabled.checked) {
+        console.log('SMS alerts are disabled');
+        return;
+      }
+      
+      const alertTypeEnabled = document.getElementById(`${type}AlertEnabled`).checked;
+      if (!alertTypeEnabled) {
+        console.log(`${type} alerts are disabled`);
+        return;
+      }
+
+      const phoneItems = Array.from(phoneList.querySelectorAll('.phone-item'));
+      if (phoneItems.length === 0) {
+        console.log('No phone numbers found in the list');
+        return;
+      }
+
+      const errors = [];
+
+      try {
+        for (const phoneItem of phoneItems) {
+          try {
+            const phoneText = phoneItem.querySelector('.phone-text').textContent;
+            const carrier = phoneItem.querySelector('.carrier-text').textContent.replace(/[()]/g, '').toLowerCase();
+            
+            console.log('Processing phone:', { phoneText, carrier });
+            
+            // Format phone number
+            const formattedPhone = formatPhoneForSMS(phoneText);
+            
+            // Get carrier gateway
+            const gateway = carrierGateways[carrier];
+            if (!gateway) {
+              throw new Error(`Unsupported carrier: ${carrier}`);
+            }
+
+            const smsEmail = `${formattedPhone}@${gateway}`;
+            console.log('Sending SMS via email gateway:', smsEmail);
+            
+            const response = await emailjs.send(
+              'service_lsa1r4i',
+              'template_vnrbr1d',
+              {
+                to_email: smsEmail,
+                alert_type: type.toUpperCase(),
+                alert_message: message,
+                timestamp: new Date().toLocaleString()
+              }
+            );
+            
+            console.log('SMS sent successfully to:', smsEmail, response);
+          } catch (error) {
+            let errorMsg = error && (error.text || error.message || error.toString());
+            errors.push(`Failed to send to ${phoneItem.querySelector('.phone-text').textContent}: ${errorMsg}`);
+          }
+        }
+
+        if (errors.length > 0) {
+          throw new Error(errors.join('\n'));
+        }
+        
+        console.log('All SMS alerts sent successfully');
+      } catch (error) {
+        console.error('SMS Alert Errors:', error);
+        // Show error in UI
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = `Failed to send SMS: ${error.message}`;
+        document.body.appendChild(errorDiv);
+        setTimeout(() => errorDiv.remove(), 5000);
+      }
+    }
+
+    // Function to clear terminal logs
+    function clearTerminal(elementId) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.textContent = '';
+      }
+    }
+
+    // Function to export log
+    function exportLog(elementId) {
+      const terminal = document.getElementById(elementId);
+      if (terminal) {
+        const content = terminal.innerText;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = elementId + '_export.txt';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    }
+
+    // Function to email log
+    function emailLog(elementId) {
+      const terminal = document.getElementById(elementId);
+      if (terminal) {
+        const content = terminal.innerText;
+        // Show email modal
+        const emailModal = document.getElementById('emailModal');
+        if (emailModal) {
+          emailModal.classList.remove('hidden');
+          // Store the log content and terminal ID for use when sending
+          emailModal.dataset.content = content;
+          emailModal.dataset.sourceId = elementId;
+        }
+      }
+    }
+
+    function sendEmailAlert(type, message) {
+      const emails = Array.from(document.querySelectorAll('.email-text')).map(span => span.textContent);
+      if (!emails.length) {
+        showMessage('No email recipients found for alert.', 'error');
+        return;
+      }
+      emails.forEach(email => {
+        emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            to_email: email,
+            alert_type: type.toUpperCase(),
+            alert_message: message,
+            timestamp: new Date().toLocaleString()
+          }
+        ).then(() => {
+          showMessage('Email alert sent to ' + email, 'success');
+        }).catch(error => {
+          showMessage('Failed to send email alert: ' + error.text, 'error');
+        });
+      });
+    }
+  </script>
+
+  <style>
+    /* Email Alerts Tab Styles */
+    .alerts-settings-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    .email-section,
+    .sms-section {
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+    }
+
+    .alert-preferences,
+    .test-alerts-section {
+      grid-column: 1 / -1;
+      background: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+
+    .validation-msg {
+      color: #ff4444;
+      font-size: 14px;
+      margin-top: 5px;
+      min-height: 20px;
+    }
+
+    .email-list,
+    .phone-list {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 15px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+    }
+
+    .test-alerts-section {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .test-btn {
+      padding: 10px 20px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .test-btn:hover {
+      background-color: #1976D2;
+    }
+
+    .test-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* Email Modal Styles */
+    .modal {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-content {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      min-width: 300px;
+      max-width: 500px;
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .modal-content input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .modal-buttons button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .modal-buttons button[data-action="send-email"] {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    .modal-buttons button[data-action="close-modal"] {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .success-message,
+    .error-message {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      border-radius: 4px;
+      color: white;
+      z-index: 1001;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .success-message {
+      background-color: #4CAF50;
+    }
+
+    .error-message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #ff4444;
+      color: white;
+      padding: 15px;
+      border-radius: 5px;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      max-width: 300px;
+      word-wrap: break-word;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</body>
+</html>

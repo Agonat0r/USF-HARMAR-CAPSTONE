@@ -1,0 +1,225 @@
+# VPL Monitoring Dashboard Summary
+
+## Project Overview
+A real-time monitoring dashboard for VPL (Vertical Platform Lift) systems using MQTT for communication and web technologies for the interface.
+
+## Technical Stack
+- Frontend: HTML5, CSS3, JavaScript (ES6+)
+- MQTT: MQTT.js client library
+- Broker: EMQX Cloud (usf-harmar2025.cloud.emqx.io:8084)
+- Database: Firebase Firestore for logging
+- Additional: EmailJS for email notifications
+
+## Core Components
+
+### 1. MQTT Communication (script.js)
+- Class: `MQTTHandler`
+- Broker: EMQX Cloud (WSS)
+- Credentials: 
+  - Username: usf-harmar
+  - Password: harmar2025
+- Topics: 
+  - Main topic: 'usf/messages'
+- Message Format:
+  ```javascript
+  {
+    "type": "telemetry" | "status" | "command" | "alert",
+    "data": {
+      // For telemetry:
+      "position": number,    // Position in mm
+      "speed": number,      // Speed in mm/s
+      "temperature": number // Temperature in °C
+      // For status:
+      "state": string      // VPL state (e.g., "running", "stopped")
+    }
+  }
+  ```
+- Example Messages:
+  ```javascript
+  // Telemetry update:
+  {
+    "type": "telemetry",
+    "data": {
+      "position": 100,
+      "speed": 50,
+      "temperature": 25
+    }
+  }
+
+  // Status update:
+  {
+    "type": "status",
+    "data": {
+      "state": "running"
+    }
+  }
+
+  // Command message:
+  {
+    "type": "command",
+    "data": {
+      "command": "stop"
+    }
+  }
+
+  // Alert message:
+  {
+    "type": "alert",
+    "data": {
+      "message": "Temperature high"
+    }
+  }
+  ```
+
+### 2. UI Components
+- Status Dashboard
+  - Connection status
+  - MQTT status
+  - Last update timestamp
+  - VPL state
+- Telemetry Display
+  - Position (mm)
+  - Speed (mm/s)
+  - Temperature (°C)
+- System Log
+  - Real-time message display
+  - Export functionality
+  - Clear log option
+- Customization
+  - Themes: Default, Dark, USF
+  - Fonts: Default, Monospace, Sans-serif
+  - Border toggle
+
+### 3. Features
+- Real-time data updates
+- Sound notifications
+  - Command sounds (for messages starting with "COMMAND:" or "E")
+  - Alert sounds (for messages containing "alert")
+- Theme customization
+- Persistent settings (localStorage)
+- Responsive design
+- Accessibility features
+- Multi-language support
+
+### 4. File Structure
+- index.html: Main HTML structure
+- styles.css: Styling and themes
+- script.js: Core functionality and MQTT handling
+  - All functions are documented with JSDoc comments explaining:
+    - Function purpose
+    - Parameters and their types
+    - Return values
+    - Examples where needed
+- sounds/: Audio files for notifications
+  - click.mp3: Button click feedback sound
+
+### 5. Settings Management
+- Storage Key: 'usf_harmar_settings'
+- Stored in localStorage
+- Settings:
+  - theme
+  - font
+  - showBorders
+  - fontSize
+  - language
+
+### 6. Authentication
+- Basic login system
+- Credentials:
+  - Username: Carlos
+  - Password: mqtt2025
+
+## Development Notes
+
+### Adding New Features
+1. MQTT Topics: Add new topic subscriptions in MQTTHandler.connect()
+2. UI Elements: Update index.html and add corresponding styles in styles.css
+3. Functionality: Add handlers in script.js
+4. Document new functions with JSDoc comments
+5. Update this summary file
+
+### Modifying Existing Features
+1. Check for dependencies in MQTTHandler class
+2. Test changes with different themes
+3. Ensure accessibility is maintained
+4. Update translations if adding user-facing text
+5. Add/update function documentation
+6. Update this summary file
+
+### Common Customization Points
+1. MQTT Configuration: MQTTHandler constructor in script.js
+2. Theme Colors: CSS variables in :root
+3. UI Layout: CSS Grid/Flexbox in styles.css
+4. Message Handling: handleMessage method in MQTTHandler
+
+## Maintenance Notes
+- Regular testing of MQTT connection
+- Monitor Firestore logs for errors
+- Check sound file availability
+- Update translations for new features
+- Keep dependencies updated
+- Ensure all new functions are properly documented with JSDoc comments
+
+## Recent Changes (2024-03-20)
+
+### Login and Terminal Console Fixes
+1. Added global state variable `loggedIn` to track authentication status
+2. Enhanced login handling function with:
+   - Input validation and trimming
+   - Proper error handling
+   - Clear feedback messages
+   - Form clearing after successful login
+   - Proper DOM element checks
+
+3. Terminal Console Improvements:
+   - Added proper initialization of terminal elements
+   - Enhanced message logging with timestamps
+   - Added distinct message types (info, error, warning, success)
+   - Improved visibility of messages through proper styling
+   - Added automatic scrolling to latest messages
+
+4. Authentication Flow:
+   - Updated credentials to use admin/admin
+   - Added proper state management for logged in status
+   - Added proper UI transitions between login and main app
+   - Added error messages for invalid credentials
+
+5. Error Handling:
+   - Added comprehensive error checking
+   - Added user-friendly error messages
+   - Added console logging for debugging
+   - Added proper null checks for DOM elements
+
+These changes ensure:
+- Reliable login functionality
+- Visible and properly functioning terminal console
+- Clear user feedback
+- Proper error handling
+- Improved code maintainability
+
+Last Updated: 2024-03-20
+Last Change: Fixed login functionality and terminal console visibility
+
+---
+2024-05-30: Updated translations.js to add missing translation keys for new data-translate attributes in index.html. The following keys were added to all supported languages (en, de, es, fr):
+- commandConsole
+- enterEmail
+- enterPhone
+- addEmail
+- addPhone
+- sendTestEmail
+- sendTestSMS
+- smsAlerts
+
+This ensures that all visible UI elements with data-translate attributes are now fully covered in every language, supporting seamless language switching and consistent user experience. No existing translations were changed or removed.
+
+2024-05-30: Fixed language dropdown so that all language selections (not just English) work and persist. Added an event listener to the languageSelector dropdown that calls switchLanguage, ensuring the UI and settings update correctly when a new language is selected.
+
+2024-05-30: Removed all SMS-related UI elements from the email alerts tab in index.html. Only email alert controls remain in that tab. The separate SMS alerts tab and its controls are unaffected.
+
+- Updated User Manual.txt to specify:
+  - Motor controller is ESP32-S3
+  - HMI is ESP32-S3-LCD-EV-BOARD
+- Removed/deprecated all instructions for ESP Mail Client and Gmail SMTP on ESP32 devices
+- Clarified that all email alerts are now handled exclusively by EmailJS from the web dashboard
+- No credential information was altered 

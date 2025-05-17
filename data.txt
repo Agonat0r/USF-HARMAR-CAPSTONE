@@ -1,0 +1,145 @@
+Data Monitoring Guide for HMI
+
+This document explains each type of data you can monitor on the HMI and how to view or track it, referencing where it is handled in the code or UI. For each data type, code line numbers and function names are provided for quick reference.
+
+1. System Status
+- WiFi Connection Status:
+  - Displayed on the Home screen and status label.
+  - MotorESP32S3.ino:
+    - WiFi credentials: lines 13–16
+    - WiFi connection in setup(): lines ~230–300
+    - Status checked in loop(): lines ~900–950 (if (WiFi.status() != WL_CONNECTED) { ... })
+  - HMIESP32.C:
+    - WiFi credentials: lines 17–18
+    - WiFi events: wifi_event_handler() lines ~70–110
+    - Status label: lv_label_set_text(label_status, ...) lines ~90, ~100, ~110
+- MQTT Broker Status:
+  - Displayed on the Home screen/status label.
+  - MotorESP32S3.ino:
+    - MQTT connection: reconnectMQTT() lines ~361–390
+    - Status checked in loop(): lines ~900–950
+  - HMIESP32.C:
+    - MQTT events: mqtt_event_handler() lines ~220–260
+    - Status label: lv_label_set_text(label_status, ...) lines ~230, ~243, ~246
+- Device Uptime/Restart:
+  - Can be added by tracking millis() or system time since boot.
+  - MotorESP32S3.ino: use millis() in loop() lines ~900–950
+  - HMIESP32.C: use esp_timer_get_time() or xTaskGetTickCount() in app_main() lines ~507–528
+
+2. Lift/Platform Status
+- Current Mode (Elevator/Lift):
+  - Shown on Controls screen and Home screen.
+  - MotorESP32S3.ino: elevatorMode variable line ~120; logic in loop() lines ~900–950
+  - HMIESP32.C: elevator_mode variable line ~50; mode_switch_cb() lines ~300–320
+- Direction of Movement:
+  - MotorESP32S3.ino: currentDirection variable line ~121; handleMovement() lines ~200–220; logic in loop() lines ~900–950
+- Brake Status:
+  - MotorESP32S3.ino: applyBrake() and releaseBrake() lines ~200–220; BRAKE_PIN line ~60
+- Limit Switch Status:
+  - MotorESP32S3.ino: LIMIT_SWITCH_UP, LIMIT_SWITCH_DOWN lines ~55–56; logic in loop() lines ~900–950
+- Button Press Status:
+  - MotorESP32S3.ino: UP_BUTTON, DOWN_BUTTON lines ~53–54; logic in loop() lines ~900–950
+
+3. LED and Sensor States
+- Red/Green/Amber LED Status:
+  - MotorESP32S3.ino: redLEDs, greenLEDs arrays lines ~65–66; LEDState struct line ~100; readDeviceOutputs() lines ~700–800; processLEDStatus() lines ~900–1150
+  - Status history: ledStatusHistory variable, updated in processLEDStatus()
+
+4. Alarms and Warnings
+- Green/Amber/Red Alarms:
+  - MotorESP32S3.ino: processLEDStatus() lines ~900–1150; publishAlert() lines ~282–300
+  - Each alarm includes a description and timestamp (see getTimestamp() line ~150)
+- Alarm Details/History:
+  - MotorESP32S3.ino: redAlarms, amberAlarms, greenAlarms variables; updated in processLEDStatus()
+
+5. Logs and Diagnostics
+- System Logs:
+  - MotorESP32S3.ino: addToLog() lines ~800–850; flushLogBuffer() lines ~860–880
+- Command Logs:
+  - MotorESP32S3.ino: publishCommandLog() lines ~285–290
+- Alert Logs:
+  - MotorESP32S3.ino: publishAlert() lines ~282–300
+- Download/Clear Logs:
+  - Web UI: "Download Full Log" and "Clear Logs" buttons call backend endpoints
+  - MotorESP32S3.ino: serialLogs variable, logBuffer, and related logic
+
+6. Email Notification Settings
+- Email Recipients:
+  - MotorESP32S3.ino: emailAddresses array line ~70; saveEmailsToSPIFFS() and loadEmailsFromSPIFFS() lines ~1200–1250
+- Email Notification Enabled:
+  - MotorESP32S3.ino: emailNotificationsEnabled variable line ~73
+- Last Sent Email Status:
+  - MotorESP32S3.ino: lastEmailSent variable line ~75
+
+7. User and System Controls
+- Mode Selection:
+  - MotorESP32S3.ino: elevatorMode variable line ~120; logic in loop() lines ~900–950
+- Manual Movement (UP/DOWN/STOP):
+  - MotorESP32S3.ino: handleMovement(), stopMovement(), stopUpMovement(), stopDownMovement() lines ~200–220
+- Brake Controls:
+  - MotorESP32S3.ino: applyBrake(), releaseBrake() lines ~200–220
+- Adjustable Delays:
+  - MotorESP32S3.ino: LIFT_MODE_DELAY, ELEVATOR_MODE_DELAY, LED_CHECK_DELAY lines ~40–50
+
+8. Network and Communication
+- WiFi SSID/Signal:
+  - MotorESP32S3.ino: ssid variable line 13; WiFi.RSSI() can be used in loop()
+- MQTT Broker Address/Port:
+  - MotorESP32S3.ino: mqtt_server, mqtt_port lines 17–18
+- Last Communication Timestamp:
+  - MotorESP32S3.ino: getTimestamp() line ~150; used in MQTT payloads
+
+9. HMI/Interface Settings
+- Language Selection:
+  - Web UI: Settings tab logic in script.js
+- Theme/Brightness:
+  - Web UI: Settings tab logic (if implemented)
+- About/Project Info:
+  - HMIESP32.C: About tab, lv_label_set_text(about_label, ...) line ~507
+
+10. Advanced/Optional
+- Latency Measurements:
+  - MotorESP32S3.ino: add timing code using millis() or gettimeofday() in loop() or around MQTT callbacks
+  - HMIESP32.C: add timing code using esp_timer_get_time() or xTaskGetTickCount() in app_main() or event handlers
+  - Practical Example: Monitoring MQTT Message Latency
+    - When publishing a message (e.g., in publishMessage()):
+      String payload = "{\"type\":\"info\",\"message\":\"Test\",\"timestamp\":" + String(millis()) + "}";
+      mqttClient.publish(mqttTopic, payload.c_str());
+    - When receiving a message (in callback()):
+      StaticJsonDocument<256> doc;
+      deserializeJson(doc, payload, length);
+      unsigned long sentTime = doc["timestamp"];
+      unsigned long now = millis();
+      unsigned long latency = now - sentTime;
+      Serial.print("MQTT Latency: ");
+      Serial.println(latency);
+  - Practical Example: UI Response Latency
+    - Before sending a command:
+      unsigned long actionStart = millis();
+      handleMovement("up");
+    - After movement is confirmed:
+      unsigned long actionEnd = millis();
+      unsigned long responseLatency = actionEnd - actionStart;
+      Serial.print("UI Response Latency: ");
+      Serial.println(responseLatency);
+  - End-to-End Latency:
+    - Include a timestamp in the command sent from the UI.
+    - Log the time when the ESP32 receives and acts on the command.
+    - Compare the two times (requires synchronized clocks or relative timing).
+- Power/Battery Level:
+  - MotorESP32S3.ino: read analog pin (add analogRead() in loop())
+  - Example:
+    int raw = analogRead(A0);
+    float voltage = raw * (3.3 / 4095.0); // Adjust for your ADC and divider
+    Serial.print("Battery Voltage: ");
+    Serial.println(voltage);
+- Sensor Data (Temp, Humidity, etc.):
+  - MotorESP32S3.ino: add sensor read logic in loop() and display in web UI
+- Firmware Update Status:
+  - MotorESP32S3.ino: add status variable and update in web UI if implemented
+
+To display these metrics, use Serial output, add them to logs (addToLog()), or send to the web UI via MQTT or HTTP endpoints. For each metric, add the code in the relevant function as shown above.
+
+---
+
+For each data type, check the relevant screen/tab in the HMI or the corresponding function in the code (MotorESP32S3.ino or HMIESP32.C) to see how it is monitored and displayed. If you want to add new data types, extend the UI and backend code to read, log, and display the new information. 

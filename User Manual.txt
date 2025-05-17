@@ -1,0 +1,673 @@
+User Manual
+
+========================================
+1. GETTING THE PROJECT FROM GITHUB
+========================================
+- The first step is to download (clone) the entire project from GitHub. This ensures you have all required files, including build scripts and configuration files for both the Motor Controller and HMI firmware.
+- Clone the repository:
+  git clone https://github.com/<your-org-or-username>/<your-repo>.git
+- All files, including cmake_file_for_HMI.cmake and IDF_Component_File_HMI.yaml, will be included in the download.
+
+========================================
+2. CONFIGURATION CHECKLIST (BEFORE SETUP)
+========================================
+- After cloning, review and update the following configuration items as needed:
+  - WiFi credentials (SSID and password) in both Motor Controller and HMI code
+  - MQTT broker details (host, port, username, password) in both Motor Controller and HMI code, and in the web dashboard
+  - EmailJS configuration in the web dashboard
+  - Board selection in Arduino IDE (ESP32-S3-USB-OTG)
+  - Any other project-specific settings noted in the README or code comments
+
+========================================
+3. HARDWARE AND SOFTWARE REQUIREMENTS
+========================================
+Hardware:
+• Linux/iOS/Windows System (latest versions recommended)
+• ESP32-S3 Development Board (for Motor Controller)
+• ESP32-S3-LCD-EV-BOARD (for HMI touchscreen interface)
+• Provided VPL PCB (with 12-pin header)
+• USB Cable (for ESP32)
+Software:
+• Arduino IDE (for Motor Controller)
+• ESP-IDF (for HMI builds)
+• ESP32 Board Support Package
+• Libraries: WiFi, ESP-NOW, PubSubClient, ArduinoJson, WebServer
+
+========================================
+HARDWARE SETUP: CONNECTING ESP32-S3 TO VPL CONTROLLER
+========================================
+- Only the Motor Controller ESP32-S3 is physically connected to the VPL PCB. The HMI ESP32-S3-LCD-EV-BOARD is standalone and does not connect to the VPL hardware.
+
+Connecting the ESP32-S3 to the VPL Controller:
+- Use the provided 12-pin header and female molex connector to connect the ESP32-S3 to the VPL PCB.
+- Carefully match each pin from the ESP32-S3 to the corresponding pin on the VPL controller as per the project's wiring diagram or pinout table.
+- Double-check the orientation of the connector to avoid miswiring.
+- Secure the connection to prevent accidental disconnection during operation.
+
+Example Pinout Table:
+| ESP32-S3 Pin | VPL PCB Pin | Function           |
+|--------------|-------------|--------------------|
+| GPIO2        |             | Up Button          |
+| GPIO15       |             | Down Button        |
+| GPIO4        |             | Up Relay/Output    |
+| GPIO5        |             | Down Relay/Output  |
+| GPIO40       |             | Brake              |
+| GPIO13       |             | Up Output Pin      |
+| GPIO41       |             | Down Output Pin    |
+| GPIO20       |             | Red LED 0          |
+| GPIO47       |             | Red LED 1          |
+| GPIO45       |             | Red LED 2          |
+| GPIO39       |             | Red LED 3          |
+| GPIO21       |             | Green LED 0        |
+| GPIO48       |             | Green LED 1        |
+| GPIO35       |             | Green LED 2        |
+| GPIO37       |             | Green LED 3        |
+| ...          |             | ...                |
+
+- After connecting, proceed with the software setup and flashing steps for the Motor Controller ESP32-S3.
+
+========================================
+4. DEVELOPMENT ENVIRONMENT SETUP
+========================================
+1. Install Arduino IDE
+1. Go to Arduino Website: https://www.arduino.cc/en/software/
+2. Download Arduino IDE (Windows/Mac/Linux) and install it.
+
+3. Install ESP32 Board Support
+1. Open Arduino IDE.
+2. Go to File → Preferences.
+3. In "Additional Board Manager URLs", paste: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+4. Go to Tools → Board → Boards Manager.
+5. Search ESP32, install "esp32 by Espressif Systems".
+
+4. Install Required Libraries (Arduino IDE)
+
+To install the required libraries for the Motor Controller (ESP32-S3) on both Windows and Mac:
+
+1. Open Arduino IDE.
+2. Go to Sketch → Include Library → Manage Libraries...
+3. In the Library Manager, use the search bar to find each required library:
+   - PubSubClient
+   - ArduinoJson
+   - ESPAsyncWebServer (if needed)
+4. Click **Install** for each library.
+
+**Note:** The process is the same for both Windows and Mac. If you encounter permission issues on Mac, ensure you have write access to the Arduino libraries folder (usually in your user Documents/Arduino/libraries directory).
+
+For the HMI (ESP32-S3-LCD-EV-BOARD) using ESP-IDF:
+- Install dependencies (LVGL, cJSON, MQTT, SPIFFS, etc.) using the ESP-IDF tools:
+  - Open a terminal and navigate to your project directory.
+  - Run `idf.py add-dependency "<library>"` for each required component, or follow the ESP-IDF documentation for component installation.
+- On Mac, you may need to install additional tools via Homebrew (e.g., `brew install cmake ninja python`), and ensure your PATH includes ESP-IDF tools.
+
+5. Connect ESP32 to Computer
+1. Connect ESP32 with USB cable.
+2. In Arduino IDE, go to Tools:
+   o Board: Choose ESP32-S3-USB-OTG
+   o Port: Select correct COM port.
+
+6. Configure Your Project
+6.1 WiFi Settings
+In the code, find these lines:
+const char* ssid = "Enter SSID";
+const char* password = "Enter Password";
+Change them to match your WiFi network if needed.
+
+6.2 MQTT Settings
+Find:
+const char* mqtt_server = "your-mqtt-broker-url";
+const char* mqtt_username = "your-username";
+const char* mqtt_password = "your-password";
+Edit if your MQTT Broker credentials are different.
+
+6.3 Email Settings
+(DEPRECATED: Email alerts are now handled exclusively by EmailJS from the web dashboard. No email configuration is required on the ESP32 devices.)
+
+7. Flash the Code to ESP32
+1. Open the provided .ino code in Arduino IDE.
+2. Click the Upload button (right arrow).
+3. Monitor the output. It should say "Done uploading".
+
+8. PCB Connection Guide
+• Connect the 12-pin header from the VPL PCB to the ESP32 using the female 12-pin molex connector.
+
+8.2. Configuring the HMI
+• From the HMI (ESP32 screen), you can:
+   o See Alarms (Green, Amber, Red)
+   o Move Lift (Up, Down)
+   o Apply/Release Brake
+   o See System Logs
+
+9. HMI User Interface Overview
+The HMI (Human-Machine Interface) provides a touchscreen and display-based interface for monitoring and controlling the lift system. The main screens and their functions are:
+
+Home Screen:
+- Shows the current system status, including whether the device is connected to Wi-Fi and the MQTT broker.
+- Displays a status label at the top with real-time feedback (e.g., "Wi-Fi Connected", "MQTT Connected", or error messages).
+- Shows recent actions or system events, so you always know what the system is doing.
+
+Logs Screen:
+- Presents a scrolling terminal view of all system messages, including commands sent to the lift and all alarm notifications.
+- Includes a dedicated "Alerts Only" terminal that filters and displays only alarm messages, categorized by severity (Red, Amber, Green) and timestamped for easy review.
+- Both terminals update automatically as new data arrives, so you never miss an important event.
+
+Controls Screen:
+- Allows you to operate the lift directly from the HMI.
+- Lets you select between Elevator Mode and Lift Mode, with the current mode clearly displayed.
+- Provides large, easy-to-press UP and DOWN buttons for moving the lift, supporting both tap and press-and-hold actions.
+- Includes controls to Apply or Release the brake, with immediate feedback on the action taken.
+- All controls are designed for safe, intuitive operation.
+
+Settings Screen:
+- Lets you change the interface language from a dropdown menu, supporting multiple languages for accessibility.
+- May include additional system settings in future updates.
+- Changes take effect immediately, making it easy to personalize the HMI.
+
+About Screen:
+- Provides a brief description of the application, its purpose, and project information.
+- Useful for reference or support.
+
+Sidebar Navigation:
+- A persistent sidebar on the left side of the screen gives you quick access to all main tabs (Home, Logs, Controls, Settings, About).
+- You can switch between screens at any time, from anywhere in the interface.
+
+Visual Alerts:
+- Critical alarms (Red, Amber, Green) are shown with clear color-coding and timestamps in the Alerts Only terminal.
+- The HMI may be extended to support sound or vibration for critical events.
+
+Real-Time Updates:
+- All screens update automatically as new data arrives from the ESP32 and MQTT broker.
+- You do not need to refresh or navigate away to see the latest status or alarms.
+
+User Experience:
+- The interface is designed to be simple, clear, and responsive, so users of all backgrounds can operate the lift safely and efficiently.
+- All actions and alarms are logged for traceability and troubleshooting.
+
+10. Operation Summary
+1. ESP32 reads LED statuses and button states from the PCB.
+2. It classifies alarms:
+   o Green = Minor/Informational.
+   o Amber = Warnings.
+   o Red = Critical errors (stops movement/technician needed).
+3. ESP32 publishes alarms to MQTT topics.
+4. Web Server shows the live alarm states.
+5. Emails can be sent for critical alarms via EmailJS from the web dashboard only.
+
+11. Configure Your Project
+
+11.1 WiFi Settings
+
+In MotorESP32S3.ino:
+const char* ssid = "<insert your WiFi SSID here>";
+const char* password = "<insert your WiFi password here>";
+- Change the value of ssid to match your WiFi network name.
+- Change the value of password to your WiFi password.
+
+In HMIESP32.C:
+#define WIFI_SSID "<insert your WiFi SSID here>"
+#define WIFI_PASS "<insert your WiFi password here>"
+- Update WIFI_SSID and WIFI_PASS to match your WiFi network credentials for the HMI module.
+
+11.2 MQTT Settings
+
+In MotorESP32S3.ino:
+const char* mqtt_server = "<insert your MQTT broker address here>";
+const int mqtt_port = <insert port, e.g., 8883>;
+const char* mqtt_username = "<insert your MQTT username here>";
+const char* mqtt_password = "<insert your MQTT password here>";
+- Set mqtt_server to your MQTT broker's address.
+- Set mqtt_port to the port your broker uses (default is 8883 for secure MQTT).
+- Set mqtt_username and mqtt_password to your MQTT broker credentials.
+
+In HMIESP32.C:
+#define MQTT_URI        "<insert your MQTT WSS URI here>"
+#define MQTT_USERNAME   "<insert your MQTT username here>"
+#define MQTT_PASSWORD   "<insert your MQTT password here>"
+- Update MQTT_URI to your broker's WebSocket Secure (WSS) address if different.
+- Update MQTT_USERNAME and MQTT_PASSWORD as needed.
+
+11.3 Email Settings (Deprecated: for reference only)
+
+In MotorESP32S3.ino:
+#define AUTHOR_EMAIL "<insert your Gmail address here>"
+#define AUTHOR_PASSWORD "<insert your Gmail app password here>"
+- Set AUTHOR_EMAIL to the Gmail address you want to send alerts from.
+- Set AUTHOR_PASSWORD to your Gmail App Password (not your regular Gmail password).
+
+How do I find my app password?
+Paste the following link into any web browser:
+https://support.google.com/accounts/answer/185833?hl=en
+- Follow the instructions to generate an app password for your Gmail account.
+- Use this app password in the code.
+
+Summary:
+- Update WiFi, MQTT, and (optionally) Email settings in both MotorESP32S3.ino and HMIESP32.C to match your environment.
+- Save your changes and re-upload the code to your ESP32 devices.
+
+============================================================
+QUICK START GUIDE FOR ENGINEERS: FULL SYSTEM SETUP
+============================================================
+
+This section provides a step-by-step, detailed guide for company engineers to set up the entire VPL Monitoring and Control System, including the ESP32 Motor Controller, HMI ESP32 Module, and Web Dashboard. Follow each step carefully for a successful deployment.
+
+**IMPORTANT: NEVER SHARE, OR EXPOSE MQTT OR EMAIL CREDENTIALS IN PUBLIC REPOSITORIES OR DOCUMENTS. ALWAYS HANDLE CREDENTIALS SECURELY.**
+
+----------------------------------------
+A. HARDWARE & SOFTWARE CHECKLIST
+----------------------------------------
+1. Hardware:
+   - ESP32-S3 Development Board (for Motor Controller)
+   - ESP32-S3-LCD-EV-BOARD (for touchscreen interface)
+   - VPL PCB with 12-pin header
+   - USB cable for programming ESP32s
+   - Computer (Windows, Mac, or Linux)
+
+2. Software:
+   - Arduino IDE (for Motor's ESP32-S3)
+   - ESP-IDF (for HMI builds)
+   - ESP32 Board Support Package (see below)
+   - Required libraries: WiFi, ESP-NOW, PubSubClient, ArduinoJson, WebServer, ESPAsyncWebServer (if needed)
+   - Web browser (Chrome/Edge/Firefox recommended)
+
+----------------------------------------
+B. ESP32 MOTOR CONTROLLER SETUP (MotorESP32S3.ino)
+----------------------------------------
+1. Install Arduino IDE and ESP32 Board Support:
+   - Download Arduino IDE: https://www.arduino.cc/en/software/
+   - In Arduino IDE, go to File → Preferences → Additional Board Manager URLs, add:
+     https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   - Tools → Board → Boards Manager → Search 'ESP32' → Install 'esp32 by Espressif Systems'.
+
+2. Install Required Libraries:
+   - Sketch → Include Library → Manage Libraries:
+     - Install: ESP Mail Client, PubSubClient, ArduinoJson, ESPAsyncWebServer (if needed)
+
+3. Configure WiFi and MQTT Credentials:
+   - Open `MotorESP32S3.ino` in Arduino IDE.
+   - Find and update:
+     ```cpp
+     const char* ssid = "<insert your WiFi SSID here>";
+     const char* password = "<insert your WiFi password here>";
+     const char* mqtt_server = "<insert your MQTT broker address here>";
+     const int mqtt_port = <insert port, e.g., 8883>;
+     const char* mqtt_username = "<insert your MQTT username here>";
+     const char* mqtt_password = "<insert your MQTT password here>";
+     ```
+   - **WARNING: NEVER SHARE THESE CREDENTIALS.**
+
+4. (Optional) Configure Email Alerts:
+   - For Gmail alerts, set:
+     ```cpp
+     #define AUTHOR_EMAIL "<your@gmail.com>"
+     #define AUTHOR_PASSWORD "<your-gmail-app-password>"
+     ```
+   - Generate an app password: https://support.google.com/accounts/answer/185833?hl=en
+
+5. Flash the Code:
+   - Connect ESP32 via USB.
+   - Tools → Board: Select 'ESP32 Dev Module'.
+   - Tools → Port: Select correct COM port.
+   - Click Upload (right arrow). Wait for 'Done uploading'.
+
+6. Connect the PCB:
+   - Attach the 12-pin header from the VPL PCB to the ESP32 using the provided connector.
+
+7. Power Up and Monitor:
+   - Open Serial Monitor (baud 115200) to view logs and confirm WiFi/MQTT connection.
+   - The ESP32 will publish logs, alarms, and status to MQTT topics (see below).
+
+----------------------------------------
+C. HMI ESP32 MODULE SETUP (HMIESP32.C)
+----------------------------------------
+1. Build Environment:
+   - Use ESP-IDF for advanced builds, or Arduino IDE if supported.
+   - Board: ESP32-S3-LCD-EV-BOARD
+   - Ensure all dependencies (LVGL, cJSON, MQTT, SPIFFS, etc.) are installed.
+
+2. Configure WiFi and MQTT:
+   - In `HMIESP32.C`, update:
+     ```c
+     #define WIFI_SSID "<insert your WiFi SSID here>"
+     #define WIFI_PASS "<insert your WiFi password here>"
+     #define MQTT_URI  "<insert your MQTT WSS URI here>"
+     #define MQTT_USERNAME "<insert your MQTT username here>"
+     #define MQTT_PASSWORD "<insert your MQTT password here>"
+     ```
+   - **WARNING: NEVER SHARE OR COMMIT THESE CREDENTIALS.**
+
+3. Flash the HMI Module:
+   - Use ESP-IDF or Arduino IDE to build and flash the firmware to the HMI ESP32.
+   - Connect via USB, select the correct port, and upload.
+
+4. HMI Usage:
+   - The HMI touchscreen provides:
+     - Home: System status (WiFi/MQTT connection, recent events)
+     - Logs: All system messages and filtered alerts (Red/Amber/Green)
+     - Controls: Move lift (UP/DOWN), apply/release brake, select mode
+     - Settings: Change language, other preferences
+     - About: Project info
+   - Sidebar navigation allows switching between screens at any time.
+   - All screens update in real time as new data arrives from MQTT.
+
+----------------------------------------
+D. WEB DASHBOARD SETUP (index.html, mqtt-dashboard.js, etc.)
+----------------------------------------
+1. Requirements:
+   - Modern web browser (Chrome, Edge, Firefox)
+   - Access to the same network as the MQTT broker (or broker must be public)
+
+2. MQTT Configuration:
+   - The dashboard connects to the broker using the following (see `index.html`):
+     ```js
+     const brokerConfig = {
+       host: '<your-mqtt-broker-host>',
+       port: <your-mqtt-broker-wss-port>,
+       path: '/mqtt',
+       username: '<your-mqtt-username>',
+       password: '<your-mqtt-password>',
+       clientId: 'webClient_' + Math.random().toString(16).substr(2, 8)
+     };
+     ```
+   - WARNING: NEVER EXPOSE THESE CREDENTIALS IN PUBLIC CODE.
+
+3. Running the Dashboard:
+   - Open `index.html` in your browser (or deploy to a web server).
+   - Log in with the provided credentials (see code or admin for default).
+   - The dashboard will auto-connect to MQTT and subscribe to topics:
+     - `usf/messages`, `usf/logs/alerts`, `usf/logs/general`, `usf/logs/command`, `usf/status`, `usf/telemetry`
+   - All logs, commands, and alerts will appear in their respective tabs.
+
+4. Email and SMS Alerts (Web):
+   - Go to the Email Alerts tab:
+     - Add recipient emails.
+     - Enable/disable alerts by severity (Red/Amber/Green).
+     - Set minimum interval between alerts.
+     - Use 'Send Test Email' to verify setup.
+   - All email alerts are sent via EmailJS from the web dashboard. No email configuration is required on the ESP32 devices.
+
+   Setting Up EmailJS for Email Alerts:
+   1. Go to https://www.emailjs.com/ and create a free account.
+   2. In the EmailJS dashboard, add your email service (e.g., Gmail, Outlook, etc.).
+   3. Create an email template for your alert messages (you can use the default or customize as needed).
+   4. Copy your **Service ID**, **Template ID**, and **Public Key** from the EmailJS dashboard.
+   5. In the web dashboard code or configuration (see `index.html` or `mqtt-dashboard.js`), enter these values where prompted (usually in the EmailJS setup section or settings panel).
+   6. Save your changes and reload the dashboard.
+   7. Use the 'Send Test Email' button in the dashboard to verify your setup.
+
+   **Note:** EmailJS setup is only required for the web dashboard. The ESP32 devices do not use or require EmailJS configuration.
+
+5. Customization:
+   - Use the Customization tab to set theme, font, language, and other preferences.
+   - All changes take effect immediately and are saved in your browser.
+
+========================================
+CONNECTING AND SETTING UP FIREBASE FOR THE WEB DASHBOARD
+========================================
+
+Firebase is used in this project to provide a secure, scalable cloud database (Firestore) for storing application data, logs, alerts, and user preferences. This section explains how to set up Firebase for the web dashboard.
+
+----------------------------------------
+A. WHAT IS FIREBASE USED FOR?
+----------------------------------------
+- Real-time storage and retrieval of logs, alerts, and user settings
+- Enables cloud-based data sharing and backup for the dashboard
+- Supports real-time updates and multi-user collaboration if needed
+
+----------------------------------------
+B. CREATING A FIREBASE PROJECT
+----------------------------------------
+1. Go to https://console.firebase.google.com/ and sign in with your Google account.
+2. Click "Add project" and follow the prompts to create a new Firebase project.
+3. (Optional) Enable Google Analytics if you want analytics for your project.
+4. Once created, you will be taken to the Firebase project dashboard.
+
+----------------------------------------
+C. ADDING A WEB APP TO YOUR FIREBASE PROJECT
+----------------------------------------
+1. In the Firebase console, click the web icon (</>) to add a new web app.
+2. Enter a nickname (e.g., "VPL Dashboard") and register the app.
+3. Firebase will show you a configuration snippet like:
+   ```js
+   const firebaseConfig = {
+     apiKey: "...",
+     authDomain: "...",
+     projectId: "...",
+     storageBucket: "...",
+     messagingSenderId: "...",
+     appId: "..."
+   };
+   ```
+4. Copy this configuration. You will need to add it to your web dashboard code.
+
+----------------------------------------
+D. ADDING FIREBASE CONFIGURATION TO THE WEB DASHBOARD
+----------------------------------------
+1. Open `index.html` (or `mqtt-dashboard.js` if used).
+2. Locate the section where Firebase is initialized (look for `firebase.initializeApp` or similar).
+3. Replace the placeholder config with your actual Firebase config from the previous step.
+   Example:
+   ```js
+   // Replace with your Firebase config
+   const firebaseConfig = {
+     apiKey: "...",
+     authDomain: "...",
+     projectId: "...",
+     storageBucket: "...",
+     messagingSenderId: "...",
+     appId: "..."
+   };
+   firebase.initializeApp(firebaseConfig);
+   const db = firebase.firestore();
+   ```
+4. Save the file and reload the dashboard in your browser.
+
+----------------------------------------
+E. SETTING UP FIRESTORE DATABASE
+----------------------------------------
+1. In the Firebase console, go to "Firestore Database" in the left sidebar.
+2. Click "Create database" and choose production or test mode (test mode is easier for development, but restricts access for production).
+3. Set the location (region) for your database.
+4. Once created, you can add collections and documents as needed by your app.
+5. Update your dashboard code to read/write to Firestore as required (see code comments for examples).
+
+----------------------------------------
+F. SECURITY AND ENVIRONMENT BEST PRACTICES
+----------------------------------------
+- **Never commit your Firebase credentials or API keys to public repositories.**
+- For production, set Firestore security rules to restrict access only to authenticated users or specific conditions.
+- Use environment variables or a separate config file for sensitive keys if deploying to a public server.
+- Regularly review your Firebase usage and security settings in the Firebase console.
+
+----------------------------------------
+G. TROUBLESHOOTING
+----------------------------------------
+- If you see errors about missing Firebase config, double-check that your config object is correct and matches your Firebase project.
+- Make sure Firestore is enabled and your security rules allow the operations you are trying to perform.
+- Check the browser console for detailed error messages.
+
+========================================
+5. CONFIGURING AND FLASHING THE MOTOR CONTROLLER (ESP32-S3)
+========================================
+
+Board Selection and Tools Tab Settings in Arduino IDE:
+
+- When using the Arduino IDE for the ESP32-S3, select the board as:
+  - Board: ESP32-S3-USB-OTG
+- This option is found under:
+  `Tools` → `Board` → `ESP32-S3-USB-OTG`
+
+Recommended Tool Tab Settings:
+- Board: ESP32-S3-USB-OTG
+- Port: (e.g., COM7 — this will vary by your system)
+- Core Debug Level: None
+- Erase All Flash Before Sketch Upload: Disabled
+- Partition Scheme: Default 4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
+- Upload Mode: UART0 / Hardware CDC
+- USB Mode: USB-OTG
+
+How to Set These Options:
+1. Open Arduino IDE.
+2. Go to the `Tools` menu.
+3. Set each option as shown above for reliable uploading and operation.
+
+Notes:
+- The COM port (e.g., COM7) may be different on your computer.
+- If you do not see `ESP32-S3-USB-OTG` as an option, ensure you have installed the latest ESP32 board support via the Board Manager.
+
+========================================
+6. CONFIGURING AND FLASHING THE HMI (ESP32-S3-LCD-EV-BOARD)
+========================================
+
+HMI Screen Layout and Navigation:
+- The HMI touchscreen interface is organized for clarity and ease of use.
+- Sidebar Navigation:
+  - Persistent sidebar on the left for quick access to all main screens: Home, Logs, Controls, Settings, About.
+  - Tap any icon to switch screens.
+- Home Screen:
+  - Shows current system status, WiFi/MQTT connection, and recent actions.
+- Logs Screen:
+  - Terminal view of all system messages and a filtered "Alerts Only" terminal for Red/Amber/Green alarms.
+  - Both update in real time.
+- Controls Screen:
+  - Operate the lift (UP/DOWN), apply/release brake, and select mode.
+  - Large buttons for safe, intuitive operation.
+- Settings Screen:
+  - Change language and other system preferences.
+  - Changes take effect immediately.
+- About Screen:
+  - Project description and support info.
+- Visual Alerts:
+  - Color-coded and timestamped alarms for quick recognition.
+- General Tips:
+  - All screens update automatically as new data arrives from MQTT.
+  - Touchscreen is responsive; tap or press-and-hold as needed for controls.
+
+Setting Up ESP-IDF v5.4:
+- The HMI firmware is built and flashed using ESP-IDF v5.4.
+- Download ESP-IDF v5.4 from the official Espressif site: https://docs.espressif.com/projects/esp-idf/en/v5.4.0/esp32s3/get-started/
+- Follow the platform-specific instructions for your OS:
+  - Windows:
+    1. Download and run the ESP-IDF Tools Installer for v5.4.
+    2. Follow the prompts to install Python, Git, and ESP-IDF.
+    3. After installation, use the "ESP-IDF Command Prompt" shortcut to open a terminal with the environment set up.
+  - Mac:
+    1. Open Terminal.
+    2. Install prerequisites: `brew install cmake ninja python git` (if not already installed).
+    3. Clone ESP-IDF v5.4: `git clone -b v5.4.0 --recursive https://github.com/espressif/esp-idf.git`
+    4. Run the setup script: `cd esp-idf && ./install.sh esp32s3`
+    5. Set up the environment: `source export.sh`
+- For both platforms, always refer to the official Espressif documentation for the latest and most detailed instructions.
+- After setup, you can build and flash the HMI firmware as described in the following steps.
+
+CMake and IDF Component Files for HMI:
+
+- cmake_file_for_HMI.cmake:
+  - Purpose: Defines how the HMI firmware project is built using ESP-IDF. Specifies source files, include directories, and required ESP-IDF components.
+  - Key Points:
+    - Collects all .c source files from LVGL demos, ui_printer, and ui_tuner directories.
+    - Registers main source files and include directories for the build.
+    - Specifies required ESP-IDF components (esp_timer, esp_wifi, lvgl, esp32_s3_lcd_ev_board, mqtt, spiffs, esp_lcd, etc.).
+    - Sets compiler options to suppress certain warnings and defines LVGL include behavior.
+  - Location: This file is present in your HMI firmware project directory (typically the root or main/).
+
+- IDF_Component_File_HMI.yaml:
+  - Purpose: IDF Component Manager manifest file. Declares dependencies for your HMI project, ensuring the correct ESP-IDF version and required components are installed.
+  - Key Points:
+    - Specifies the minimum ESP-IDF version (e.g., >=5.0.1).
+    - Declares a dependency on the espressif/esp32_s3_lcd_ev_board component, version 2.1.*.
+  - Location: This file is also present in your HMI firmware project directory.
+
+Directory Structure Example:
+HMI_Firmware_Project/
+├── main.c
+├── cmake_file_for_HMI.cmake
+├── IDF_Component_File_HMI.yaml
+├── ui_printer/
+│   └── ... (source and include files)
+├── ui_tuner/
+│   └── ... (source and include files)
+├── managed_components/
+│   └── lvgl__lvgl/
+│       └── demos/
+│           └── ... (LVGL demo source files)
+└── ... (other project files)
+
+How They Work Together:
+- When you build your HMI firmware with ESP-IDF, the CMake file tells the build system which files to compile and which components to link.
+- The YAML manifest ensures all required dependencies are available and compatible with your ESP-IDF version.
+
+References:
+- ESP-IDF CMake Build System Documentation: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html
+- ESP-IDF Component Manager: https://github.com/espressif/idf-component-manager
+
+========================================
+7. WEB DASHBOARD DEVELOPMENT AND HOSTING
+========================================
+
+Website Navigation and Usage:
+- The web dashboard is designed for intuitive navigation and real-time monitoring.
+- Sidebar Navigation:
+  - Persistent sidebar on the left provides access to all main tabs: Home, Logs, Controls, Settings, About.
+  - Click any tab to switch screens instantly.
+- Home Tab:
+  - Displays system status, WiFi/MQTT connection, and recent events.
+- Logs Tab:
+  - Shows all system messages and a filtered "Alerts Only" terminal for Red/Amber/Green alarms.
+- Controls Tab:
+  - Allows direct control of the lift (UP/DOWN), brake (apply/release), and mode selection.
+  - Large, easy-to-use buttons for safe operation.
+- Settings Tab:
+  - Change interface language, theme, font, and other preferences.
+  - All changes take effect immediately.
+- About Tab:
+  - Project information and support details.
+- Customization:
+  - Use the Customization tab to set theme, font, language, and other preferences.
+  - All changes are saved in your browser.
+- Email Alerts Tab:
+  - Configure recipient emails, enable/disable alerts by severity, and test email delivery.
+- SMS Alerts Tab:
+  - Enter your mobile phone number and select your provider from the dropdown (required for correct message routing).
+  - Enable/disable SMS alerts by severity (Red/Amber/Green).
+  - Use the 'Send Test SMS' button to verify your setup.
+  - Note: The built-in SMS system currently only works for US phone numbers and providers.
+  - For international SMS, consider using a third-party service such as Twilio (https://www.twilio.com/), which supports global messaging and can be integrated with custom code if needed.
+- Alerts:
+  - Visual and (optionally) sound notifications for critical events.
+- General Tips:
+  - All screens update automatically as new data arrives.
+  - No need to refresh the page to see the latest status or alarms.
+
+========================================
+8. DEPLOYING THE WEB DASHBOARD (NETLIFY EXAMPLE)
+========================================
+
+Deploying your web dashboard with Netlify is a fast and reliable way to get your site online and automatically updated with every change you push to GitHub. Follow these steps:
+
+- Go to [https://www.netlify.com/](https://www.netlify.com/) and sign up for a free account (you can use your GitHub account for easy integration).
+- Click "Add new site" → "Import an existing project".
+- Connect your GitHub account and select your project repository.
+- Configure build settings:
+  - For static sites (HTML/JS/CSS only), you can leave the build command blank and set the publish directory to the project root (or `dist` if you use a build tool).
+  - If your project uses a build tool (like npm, yarn, or a bundler), set the build command (e.g., `npm run build`) and the publish directory (e.g., `dist`).
+- (Optional) Set environment variables:
+  - If your dashboard requires API keys or other environment variables, add them in the Netlify dashboard under Site settings → Build & deploy → Environment.
+- Click "Deploy site". Netlify will build and deploy your site. You'll get a live URL (e.g., `https://your-site.netlify.app`).
+- Automatic Redeployment:
+  - Every time you push changes to your GitHub repository, Netlify will automatically rebuild and redeploy your site.
+- Updating the Site:
+  - Make changes in VS Code, commit and push to GitHub, and Netlify will handle the rest.
+- Troubleshooting:
+  - If the site fails to build, check the build logs in the Netlify dashboard for errors.
+  - Ensure all required files are committed to GitHub and that your build settings match your project structure.
+  - For environment variable issues, double-check spelling and values in the Netlify dashboard.
+- Custom Domain:
+  - You can add a custom domain in the Netlify dashboard under Domain management.
+- Rollbacks:
+  - Netlify keeps a history of deployments. You can roll back to a previous version if needed.
+
+This process ensures your dashboard is always up to date and accessible from anywhere.
+
+============================================================
+END OF QUICK START GUIDE FOR ENGINEERS
+============================================================ 

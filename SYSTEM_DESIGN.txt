@@ -1,0 +1,175 @@
+SYSTEM DESIGN
+
+4.1 OVERVIEW
+The system is a smart Human-Machine Interface (HMI) platform for monitoring and controlling a lift/elevator system using ESP32 microcontrollers. It provides real-time status, alarm notifications, and remote control via a web interface, MQTT, and optional email alerts. The main goals are to ensure safety, enable remote diagnostics, and provide a user-friendly interface for operators and technicians.
+
+4.2 ARCHITECTURE DIAGRAM (Textual Description)
+
+• The system consists of two main ESP32 modules:
+  o MotorESP32S3: Handles motor control, sensor/LED monitoring, alarm generation, and MQTT publishing.
+  o HMIESP32.C: Runs the HMI, displays status/logs/alarms, and communicates with the MotorESP32S3 via MQTT over Wi-Fi.
+
+• The web server (browser-based UI) is hosted on Netlify for remote access and monitoring/control from any device.
+
+• EMQX (cloud-hosted) serves as the MQTT broker, relaying messages between ESP32 devices and the web UI.
+
+• Firebase is used as the backend database for storing logs, alerts, and user data.
+
+• EmailJS is integrated for sending critical alerts and notifications via email.
+
+• Source code is managed and updated through a GitHub repository for version control and CI/CD.
+
+• User devices (PC, tablet, phone) access the HMI via a web browser.
+
+Data Flow:
+• Sensors/LEDs → MotorESP32S3 → MQTT Broker (EMQX) → HMIESP32.C & Web UI (Netlify) → Firebase (for logs/alerts)
+• User commands (via Web UI) → MQTT Broker (EMQX) → MotorESP32S3
+• Alarms/logs → MQTT Broker (EMQX) → HMI/Web UI/Firebase/EmailJS
+
+Summary:
+- All real-time communication is handled via MQTT (EMQX).
+- Persistent data and analytics are stored in Firebase.
+- EmailJS is used for outbound email alerts.
+- The web UI is always up-to-date via Netlify deployments from GitHub.
+- The architecture is fully cloud-integrated, supporting remote monitoring, control, and alerting.
+
+4.3 KEY COMPONENTS
+- MotorESP32S3 Firmware:
+  - Reads sensors, monitors LEDs, controls relays/motors.
+  - Publishes status, logs, and alarms to MQTT topics.
+  - Handles WiFi, MQTT, and optional email sending.
+- HMIESP32.C Firmware:
+  - Runs LVGL-based graphical UI on ESP32-S3.
+  - Subscribes to MQTT topics for real-time updates.
+  - Displays system status, logs, alarms, and allows user control.
+- Web UI:
+  - HTML/JS frontend for monitoring, control, and configuration.
+  - Communicates with ESP32 via HTTP endpoints and/or MQTT.
+- MQTT Broker (EMQX):
+  - Relays messages between all system components.
+  - Ensures decoupled, scalable communication.
+- Email Notification Module:
+  - Sends email alerts for critical alarms (configurable recipients).
+- SPIFFS Storage:
+  - Stores logs, email lists, and configuration on ESP32 flash.
+
+4.4 TECHNOLOGIES USED
+- Hardware:
+  - ESP32-S3-LCD-EV-Board Development Board (MotorESP32S3, HMIESP32.C)
+  - Teyleten Robot DC 1 Channel Optocoupler 3V/3.3V Relay High Level Driver Module (opto-isolated, 3V/3.3V logic)
+  - LEDs, limit switches, buttons, power supply
+- Software:
+  - Arduino framework (C++ for ESP32)
+  - LVGL (Light and Versatile Graphics Library) for HMI UI
+  - PubSubClient (MQTT library for Arduino)
+  - ESP_Mail_Client (for SMTP email)
+  - SPIFFS (on-device file storage)
+  - Web server (ESP32 or external)
+  - HTML, JavaScript (frontend)
+  - EMQX (MQTT broker)
+  - Firebase (backend database for logs, alerts, and user data)
+  - EmailJS (cloud email notification service)
+- Platforms:
+  - Windows/macOS/Linux for development
+  - Web browsers (Chrome, Edge, Firefox, Safari)
+
+4.5 BILL OF MATERIALS
+- ESP32-S3-LCD-EV-Board Development Board (1x)
+- ESP32-S3 Dev Board (1x)
+- Teyleten Robot DC 1 Channel Optocoupler 3V/3.3V Relay High Level Driver Module
+- Power Supply (5V/12V as required)
+- Cables
+- Optional: WiFi router/access point
+
+4.6 Web UI and Frontend Requirements
+
+4.6.1 User Interface Requirements
+• Login Screen:
+  - The login screen shall require users to enter a valid username and password before accessing the main application.
+  - Provides immediate feedback for successful or failed login attempts.
+  - Prevents access to all main tabs and features until authentication is successful.
+  - Shall be accessible and responsive on both desktop and mobile browsers.
+
+• Navigation and Sidebar:
+  - A persistent navigation bar and tab selector shall be accessible from any page.
+  - Sidebar or top navigation shall provide quick access to all main tabs: General, Status, Controls, Commands, Alerts, Customization, and Email Alerts.
+  - Navigation elements shall be clearly labeled and accessible on both desktop and mobile browsers.
+
+• General Tab:
+  - Displays a real-time terminal of all system messages, including logs, status updates, and general notifications.
+  - Provides controls for clearing, exporting, and emailing logs.
+  - Supports real-time updates and auto-scroll to the latest entry.
+
+• Status Tab:
+  - Shows connection status for MQTT and Firebase, last update time, and overall VPL system state.
+  - Displays telemetry data such as position, speed, and temperature.
+  - Updates all status indicators in real-time.
+
+• Controls Tab:
+  - Provides UP, DOWN, STOP, APPLY BRAKE, and RELEASE BRAKE buttons for direct control of the lift.
+  - Supports both press-and-hold and single-click actions for movement commands.
+  - Clearly indicates the current mode (Elevator or Lift) and provides immediate feedback on command transmission.
+  - Visually disables or enables controls based on system state and connectivity.
+
+• Commands Tab:
+  - Displays a chronological history of all commands sent and received.
+  - Allows direct entry of commands via a terminal input field.
+  - Provides controls for clearing, exporting, and emailing command history.
+  - Supports real-time updates and auto-scroll to the latest command.
+
+• Alerts Tab:
+  - Categorizes and displays Red, Amber, and Green alarms, each with timestamps and severity.
+  - Provides a dedicated area for critical alerts, ensuring they are visually prominent.
+  - Supports real-time updates and auto-scroll to the latest alert.
+
+• Customization Tab:
+  - Allows users to change the UI theme (default, dark, USF), font, language, and border visibility.
+  - All customization changes are reflected immediately in the UI.
+  - Provides a reset option to restore default settings.
+
+• Email Alerts Tab:
+  - Allows users to manage the list of email recipients for notifications.
+  - Provides controls to enable or disable email notifications.
+  - Supports adding and removing email addresses and displays the current recipient list.
+
+• All screens:
+  - Shall support real-time updates and visual feedback for user actions and system events.
+  - Shall be accessible and responsive on both desktop and mobile browsers.
+
+4.6.2 Performance
+• 95 percent of UI updates (status, logs, alarms) shall be reflected within 1 second of the event.
+• The UI shall refresh operational status and logs at least every 200 milliseconds.
+• MQTT and connection status shall be updated in real-time.
+
+4.6.3 Capacity
+• The log and alert terminals shall buffer at least 4096 characters each, ensuring recent history is always available.
+• The system shall support at least 10 concurrent browser sessions without performance degradation.
+
+4.6.4 Availability
+• The web UI shall be available 24/7 with less than 2 percent downtime annually.
+• The UI shall automatically attempt to reconnect to MQTT and Firebase in the event of disconnection.
+
+4.6.5 Latency
+• Critical alarms must be processed and displayed in the Alerts tab within 500 milliseconds of receipt.
+• User interactions (button presses, tab switches) shall be reflected in the UI within 1 second.
+
+4.6.6 Maintainability
+• The frontend codebase (index.html, script.js, styles.css) shall be modular, allowing independent updates to each tab and component.
+• Error messages and connection status shall guide users and developers during troubleshooting.
+
+4.6.7 Monitoring
+• The UI shall monitor and display the status of MQTT, Firebase, and system commands in real-time.
+• All alarms and commands shall be logged with timestamps for traceability.
+
+4.6.8 Maintenance
+• The UI and supporting scripts shall be updatable via GitHub and Netlify deployments.
+• System logs and alerts shall be accessible for maintenance and diagnostics.
+
+4.6.9 System Interfaces
+• The UI shall interface with the MQTT broker (EMQX) over secure WSS, subscribing to all relevant topics for commands and alerts.
+• The UI shall integrate with Firebase for backend data storage and retrieval.
+• The UI shall use EmailJS for sending email notifications.
+• The UI shall support integration with additional system modules as required for future expansion.
+
+---
+This document provides a high-level system design reference for developers, integrators, and maintainers. 
