@@ -5,7 +5,7 @@ User Manual
 ========================================
 - The first step is to download (clone) the entire project from GitHub. This ensures you have all required files, including build scripts and configuration files for both the Motor Controller and HMI firmware.
 - Clone the repository:
-  git clone https://github.com/<your-org-or-username>/<your-repo>.git
+  git clone https://github.com/Agonat0r/USF-HARMAR-CAPSTONE.git
 - All files, including cmake_file_for_HMI.cmake and IDF_Component_File_HMI.yaml, will be included in the download.
 
 ========================================
@@ -47,7 +47,7 @@ Connecting the ESP32-S3 to the VPL Controller:
 Example Pinout Table:
 | ESP32-S3 Pin | VPL PCB Pin | Function           |
 |--------------|-------------|--------------------|
-| GPIO2        |             | Up Button          |
+| GPIO2        |[Insert Pin] | Up Button          |
 | GPIO15       |             | Down Button        |
 | GPIO4        |             | Up Relay/Output    |
 | GPIO5        |             | Down Relay/Output  |
@@ -399,6 +399,114 @@ D. WEB DASHBOARD SETUP (index.html, mqtt-dashboard.js, etc.)
 5. Customization:
    - Use the Customization tab to set theme, font, language, and other preferences.
    - All changes take effect immediately and are saved in your browser.
+
+========================================
+OBTAINING MQTT BROKER CONNECTION DETAILS AND SETTING UP TOPICS IN EMQX
+========================================
+
+To connect your devices and dashboard to the EMQX MQTT broker, you need the following connection details:
+
+```cpp
+const char* mqtt_server = "lb88002c.ala.us-east-1.emqxsl.com";
+const int mqtt_port = 8883;  // MQTT over TLS/SSL Port
+const char* mqtt_username = "Carlos";
+const char* mqtt_password = "mqtt2025";
+```
+
+----------------------------------------
+A. WHERE TO GET MQTT BROKER CONNECTION DETAILS
+----------------------------------------
+1. **From Your EMQX Cloud Console (if using EMQX Cloud):**
+   - Log in to your EMQX Cloud account at https://cloud.emqx.com/.
+   - Select your deployment/instance.
+   - Go to the "Overview" or "Connection" tab.
+   - Copy the server address (e.g., `lb88002c.ala.us-east-1.emqxsl.com`) and port (e.g., `8883` for secure MQTT).
+   - Go to the "Authentication" or "Users" section to view or create MQTT usernames and passwords.
+
+2. **From Your Self-Hosted EMQX Dashboard:**
+   - Log in to your EMQX Dashboard (e.g., http://<your-broker-ip>:18083/).
+   - Go to the "Access Control" or "Authentication" section.
+   - View or create MQTT users and passwords.
+   - The server address is your broker's public IP or domain name; the port is typically `8883` for secure connections.
+
+3. **From Your IT/DevOps Team:**
+   - If you do not have access to the EMQX dashboard, request the connection details from your system administrator or DevOps team.
+
+**Security Note:**
+- NEVER share your MQTT credentials in public repositories or documentation. The above values are examples—replace them with your actual credentials.
+
+----------------------------------------
+B. HOW TO SET UP TOPICS IN EMQX
+----------------------------------------
+1. **Default Behavior:**
+   - EMQX allows clients to publish/subscribe to any topic by default, unless topic restrictions are configured.
+   - You do not need to pre-create topics; they are created dynamically when a client publishes or subscribes.
+
+2. **(Optional) Restricting or Managing Topics:**
+   - To restrict which topics can be used, go to the "Access Control" or "ACL" (Access Control List) section in the EMQX dashboard.
+   - Add rules to allow or deny publish/subscribe access to specific topics for each user or client.
+   - Example: Allow user `Carlos` to publish/subscribe to `usf/#` (all topics under `usf/`).
+
+3. **Monitoring Topics:**
+   - In the EMQX dashboard, go to the "Topics" or "Subscriptions" section to view active topics and subscriptions.
+   - You can see which clients are connected and what topics they are using.
+
+4. **Best Practices:**
+   - Use topic hierarchies (e.g., `usf/logs/alerts`, `usf/status`) for organization.
+   - Use wildcards (`+` for single level, `#` for multi-level) in subscriptions as needed.
+   - Regularly review topic usage and access control for security.
+
+========================================
+OBTAINING THE EMQX CA CERTIFICATE FOR THE WEB DASHBOARD (script.js)
+========================================
+
+To enable secure (TLS/SSL) connections between your web dashboard and the EMQX MQTT broker, you need the EMQX CA (Certificate Authority) certificate. This certificate is required by script.js (or your MQTT client code) to verify the broker's identity and establish a secure connection.
+
+----------------------------------------
+WHERE TO GET THE EMQX CA CERTIFICATE
+----------------------------------------
+1. **From Your EMQX Server Admin Panel:**
+   - Log in to your EMQX Dashboard (usually at http://<your-broker-ip>:18083/).
+   - Go to the "Security" or "TLS/SSL" section.
+   - Look for a link or button to download the CA certificate (often named `ca.crt`, `emqx-ca.crt`, or similar).
+   - Download the certificate file to your computer.
+
+2. **From Your EMQX Server File System:**
+   - If you have direct access to the EMQX server, the CA certificate is typically located in the EMQX data or config directory, e.g.:
+     - `/etc/emqx/certs/ca.crt`
+     - `/opt/emqx/etc/certs/ca.crt`
+   - Copy this file to your local machine.
+
+3. **From Your IT/DevOps Team:**
+   - If you do not have access to the server or admin panel, request the CA certificate from your system administrator or DevOps team.
+
+----------------------------------------
+USING THE CA CERTIFICATE IN script.js
+----------------------------------------
+- Place the downloaded CA certificate in a secure location accessible to your web dashboard code.
+- In `script.js`, reference the CA certificate when configuring the MQTT client for secure connections (see code comments or documentation for the correct usage).
+- Example (using MQTT.js):
+  ```js
+  const client = mqtt.connect('wss://<broker-url>:<port>', {
+    ca: [fs.readFileSync('path/to/ca.crt')],
+    // ...other options
+  });
+  ```
+- For browser-based dashboards, you may need to ensure the broker's certificate chain is trusted by the browser (importing the CA into the OS/browser if needed).
+
+----------------------------------------
+SECURITY NOTE
+----------------------------------------
+- **Never share your CA certificate in public repositories.**
+- Only use the CA certificate for secure, internal communication with your EMQX broker.
+- If you rotate or update your broker's certificates, be sure to update the CA certificate in your dashboard as well. 
+
+----------------------------------------
+C. SUMMARY
+----------------------------------------
+- Obtain your MQTT server address, port, username, and password from the EMQX dashboard, cloud console, or your IT team.
+- Topics do not need to be pre-created; they are managed dynamically, but you can restrict or monitor them via the EMQX dashboard.
+- Always keep your credentials secure.
 
 ========================================
 CONNECTING AND SETTING UP FIREBASE FOR THE WEB DASHBOARD
